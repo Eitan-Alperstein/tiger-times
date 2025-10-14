@@ -123,6 +123,34 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
   const [newReply, setNewReply] = useState('');
   const isLiked = comment.likes?.includes(currentUser?.id);
 
+  const handleReplyLike = async (articleId, commentId, replyId, isLiked) => {
+    if (!currentUser) return;
+    try {
+      const replyRef = doc(db, 'articles', articleId, 'comments', commentId, 'replies', replyId);
+      const reply = replies.find(r => r.id === replyId);
+      const currentLikeCount = reply?.likeCount || 0;
+      
+      if (isLiked) {
+        await updateDoc(replyRef, {
+          likes: arrayRemove(currentUser.id),
+          likeCount: Math.max(0, currentLikeCount - 1)
+        });
+      } else {
+        await updateDoc(replyRef, {
+          likes: arrayUnion(currentUser.id),
+          likeCount: currentLikeCount + 1
+        });
+      }
+      await fetchReplies();
+    } catch (error) {
+      console.error('Error liking reply:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchReplies();
+  }, []);
+
   useEffect(() => {
     if (showReplies) {
       fetchReplies();
@@ -149,6 +177,13 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
 
   const handleReplySubmit = async () => {
     if (!newReply.trim() || !currentUser) return;
+
+    // Check if user already replied to this comment
+    const userAlreadyReplied = replies.some(reply => reply.userId === currentUser.id);
+    if (userAlreadyReplied) {
+      alert('You can only reply once per comment');
+      return;
+    }
 
     try {
       const repliesRef = collection(db, 'articles', articleId, 'comments', comment.id, 'replies');
@@ -185,7 +220,10 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
           {comment.likeCount || 0}
         </button>
         <button
-          onClick={() => setShowReplies(!showReplies)}
+          onClick={() => {
+            setShowReplies(!showReplies);
+            if (!showReplies) fetchReplies();
+          }}
           className="flex items-center gap-1 text-gray-500 hover:text-gray-700"
           type="button"
         >
@@ -205,7 +243,7 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
 
       {showReplies && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          {currentUser && (
+          {currentUser && !replies.some(reply => reply.userId === currentUser.id) && (
             <div className="mb-4">
               <textarea
                 value={newReply}
@@ -229,7 +267,7 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
               reply={reply}
               replyAuthor={replyAuthors[reply.userId]}
               currentUser={currentUser}
-              onLike={onReplyLike}
+              onLike={handleReplyLike}
               onDelete={onReplyDelete}
               articleId={articleId}
               commentId={comment.id}
@@ -337,6 +375,7 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
                 onRead={(article) => {
                   setCurrentArticle(article);
                   setCurrentPage('article');
+                  window.history.pushState({}, '', `?article=${article.id}`);
                 }}
               />
             ))}
@@ -444,25 +483,7 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
     }
   };
 
-  const handleReplyLike = async (articleId, commentId, replyId, isLiked) => {
-    if (!currentUser) return;
-    try {
-      const replyRef = doc(db, 'articles', articleId, 'comments', commentId, 'replies', replyId);
-      if (isLiked) {
-        await updateDoc(replyRef, {
-          likes: arrayRemove(currentUser.id),
-          likeCount: (await getDoc(replyRef)).data().likeCount - 1
-        });
-      } else {
-        await updateDoc(replyRef, {
-          likes: arrayUnion(currentUser.id),
-          likeCount: (await getDoc(replyRef)).data().likeCount + 1
-        });
-      }
-    } catch (error) {
-      console.error('Error liking reply:', error);
-    }
-  };
+
 
   const handleReplyDelete = async (articleId, commentId, replyId) => {
     try {
@@ -476,7 +497,10 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
     <div>
       <div className="bg-white border-b border-gray-200 py-8">
         <div className="max-w-4xl mx-auto px-4">
-          <button onClick={() => setCurrentPage('home')} className="text-red-600 hover:text-red-700 font-medium mb-4" type="button">← Back</button>
+          <button onClick={() => {
+            setCurrentPage('home');
+            window.history.pushState({}, '', window.location.pathname);
+          }} className="text-red-600 hover:text-red-700 font-medium mb-4" type="button">← Back</button>
           <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">{article.category}</div>
           <h1 className="text-5xl font-serif font-bold text-gray-900 mt-2">{article.title}</h1>
           <div className="flex items-center mt-4 text-gray-600">
@@ -529,7 +553,7 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
                 articleId={article.id}
                 onLike={handleCommentLike}
                 onDelete={handleCommentDelete}
-                onReplyLike={handleReplyLike}
+                onReplyLike={() => {}}
                 onReplyDelete={handleReplyDelete}
               />
             ))}
@@ -692,9 +716,11 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
                   <Edit2 size={18} />
                 </button>
               )}
-              <button onClick={() => handleDelete(article.id)} className="text-red-600 hover:text-red-700" type="button">
-                <Trash2 size={18} />
-              </button>
+              {currentUser.role === 'admin' && (
+                <button onClick={() => handleDelete(article.id)} className="text-red-600 hover:text-red-700" type="button">
+                  <Trash2 size={18} />
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -1076,6 +1102,26 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const articleId = params.get('article');
+    if (articleId) {
+      fetchArticleById(articleId);
+    }
+  }, []);
+
+  const fetchArticleById = async (articleId) => {
+    try {
+      const articleDoc = await getDoc(doc(db, 'articles', articleId));
+      if (articleDoc.exists()) {
+        setCurrentArticle({ id: articleDoc.id, ...articleDoc.data() });
+        setCurrentPage('article');
+      }
+    } catch (error) {
+      console.error('Error fetching article:', error);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
