@@ -33,36 +33,48 @@ const filterBadWords = (text) => {
 const RichTextEditor = ({ value, onChange }) => {
   const editorRef = useRef(null);
 
-  const applyFormat = (command, value = null) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
+  useEffect(() => {
+    if (editorRef.current && value) {
+      editorRef.current.innerHTML = value;
+    }
+  }, []);
+
+  const execCommand = (command) => {
+    document.execCommand(command, false, null);
+    editorRef.current.focus();
+    onChange(editorRef.current.innerHTML);
+  };
+
+  const handleInput = () => {
+    onChange(editorRef.current.innerHTML);
   };
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
-      <div className="bg-gray-100 border-b border-gray-300 p-2 flex flex-wrap gap-1">
-        <button onClick={() => applyFormat('bold')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 font-bold" type="button">B</button>
-        <button onClick={() => applyFormat('italic')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 italic" type="button">I</button>
-        <button onClick={() => applyFormat('underline')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 underline" type="button">U</button>
-        <div className="w-px bg-gray-300"></div>
-        <button onClick={() => applyFormat('formatBlock', '<h1>')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm" type="button">H1</button>
-        <button onClick={() => applyFormat('formatBlock', '<h2>')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm" type="button">H2</button>
-        <button onClick={() => applyFormat('formatBlock', '<h3>')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm" type="button">H3</button>
-        <button onClick={() => applyFormat('formatBlock', '<p>')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm" type="button">P</button>
-        <div className="w-px bg-gray-300"></div>
-        <button onClick={() => applyFormat('insertUnorderedList')} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm" type="button">• List</button>
-        <button onClick={() => applyFormat('createLink', prompt('Enter URL:'))} className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-sm" type="button">Link</button>
+    <div className="border border-gray-300 rounded">
+      <div className="border-b border-gray-300 p-2 bg-gray-50 flex gap-2">
+        <button
+          type="button"
+          onClick={() => execCommand('bold')}
+          className="px-3 py-1 border border-gray-300 rounded bg-white hover:bg-gray-100 font-bold"
+        >
+          B
+        </button>
+        <button
+          type="button"
+          onClick={() => execCommand('italic')}
+          className="px-3 py-1 border border-gray-300 rounded bg-white hover:bg-gray-100 italic"
+        >
+          I
+        </button>
       </div>
       <div
         ref={editorRef}
         contentEditable
-        onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        className="p-4 min-h-96 focus:outline-none bg-white"
-        style={{ whiteSpace: 'pre-wrap' }}
+        onInput={handleInput}
+        className="p-4 min-h-80 focus:outline-none"
+        style={{ minHeight: '300px' }}
         suppressContentEditableWarning
-      >
-        {value || ''}
-      </div>
+      />
     </div>
   );
 };
@@ -545,6 +557,7 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
       const q = query(articlesRef, where('authorId', '==', currentUser.id), orderBy('createdAt', 'desc'));
       const articlesSnap = await getDocs(q);
       const articlesData = articlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log('Writer articles:', articlesData);
       setArticles(articlesData);
       setLoading(false);
     } catch (error) {
@@ -575,6 +588,15 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
           status: 'pending_review',
           createdAt: new Date(),
           views: 0
+        });
+      } else {
+        await updateDoc(doc(db, 'articles', editingId), {
+          title: formData.title,
+          content: formData.content,
+          category: formData.category,
+          status: 'pending_review',
+          revisionReason: null,
+          updatedAt: new Date()
         });
       }
       setEditingId(null);
@@ -646,12 +668,23 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
             <div className="flex-1">
               <h3 className="font-bold text-lg text-gray-900">{article.title}</h3>
               <div className="text-sm text-gray-500 mt-1">{article.category} • {new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
-              <span className={`inline-block mt-2 px-3 py-1 text-xs font-semibold rounded ${article.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                {article.status === 'published' ? 'Published' : 'Pending Review'}
+              <span className={`inline-block mt-2 px-3 py-1 text-xs font-semibold rounded ${
+                article.status === 'published' ? 'bg-green-100 text-green-800' : 
+                article.status === 'needs_revision' ? 'bg-red-100 text-red-800' : 
+                'bg-yellow-100 text-yellow-800'
+              }`}>
+                {article.status === 'published' ? 'Published' : 
+                 article.status === 'needs_revision' ? 'Needs Revision' : 
+                 'Pending Review'}
               </span>
+              {article.revisionReason && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                  <strong>Revision needed:</strong> {article.revisionReason}
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
-              {article.status === 'pending_review' && (
+              {(article.status === 'pending_review' || article.status === 'needs_revision') && (
                 <button onClick={() => {
                   setFormData(article);
                   setEditingId(article.id);
@@ -680,6 +713,9 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
   const [articleAuthors, setArticleAuthors] = useState({});
   const [stats, setStats] = useState({ totalArticles: 0, totalViews: 0, writers: 0, editors: 0 });
   const [loading, setLoading] = useState(true);
+  const [previewArticle, setPreviewArticle] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -692,6 +728,7 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
       const q = query(articlesRef, where('status', '==', 'pending_review'), orderBy('createdAt', 'desc'));
       const articlesSnap = await getDocs(q);
       const articlesData = articlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
       setPendingArticles(articlesData);
 
       // Fetch authors for pending articles
@@ -739,12 +776,17 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
     }
   };
 
-  const rejectArticle = async (id) => {
+  const requestRevision = async (articleId, reason) => {
     try {
-      await deleteDoc(doc(db, 'articles', id));
+      await updateDoc(doc(db, 'articles', articleId), { 
+        status: 'needs_revision',
+        revisionReason: reason,
+        revisionRequestedAt: new Date()
+      });
+      alert('Revision request sent to writer');
       await fetchData();
     } catch (error) {
-      console.error('Error rejecting article:', error);
+      console.error('Error requesting revision:', error);
     }
   };
 
@@ -832,11 +874,14 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
                   <h3 className="font-bold text-lg text-gray-900">{article.title}</h3>
                   <p className="text-sm text-gray-600 mt-1">By {articleAuthors[article.authorId] || 'Unknown'} • {new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</p>
                   <div className="mt-4 flex gap-2">
+                    <button onClick={() => setPreviewArticle(article)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium" type="button">
+                      Preview
+                    </button>
                     <button onClick={() => publishArticle(article.id)} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-medium" type="button">
                       Publish
                     </button>
-                    <button onClick={() => rejectArticle(article.id)} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium" type="button">
-                      Reject
+                    <button onClick={() => setShowRejectModal(article)} className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 font-medium" type="button">
+                      Request Revision
                     </button>
                   </div>
                 </div>
@@ -917,6 +962,74 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="text-gray-600 text-sm font-medium">Editors</div>
               <div className="text-3xl font-bold text-gray-900 mt-2">{stats.editors}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewArticle && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{previewArticle.title}</h2>
+                  <p className="text-sm text-gray-600 mt-1">By {articleAuthors[previewArticle.authorId] || 'Unknown'} • {previewArticle.category}</p>
+                </div>
+                <button onClick={() => setPreviewArticle(null)} className="text-gray-500 hover:text-gray-700" type="button">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: previewArticle.content }} />
+              <div className="mt-6 flex gap-2">
+                <button onClick={() => { publishArticle(previewArticle.id); setPreviewArticle(null); }} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-medium" type="button">
+                  Publish
+                </button>
+                <button onClick={() => { setShowRejectModal(previewArticle); setPreviewArticle(null); }} className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 font-medium" type="button">
+                  Request Revision
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-4">Request Revision</h3>
+            <p className="text-sm text-gray-600 mb-4">Article: {showRejectModal.title}</p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Explain what needs to be revised..."
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:outline-none focus:border-red-600"
+              rows="4"
+            />
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  if (rejectReason.trim()) {
+                    requestRevision(showRejectModal.id, rejectReason);
+                    setShowRejectModal(null);
+                    setRejectReason('');
+                  }
+                }} 
+                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 font-medium" 
+                type="button"
+              >
+                Send Revision Request
+              </button>
+              <button 
+                onClick={() => {
+                  setShowRejectModal(null);
+                  setRejectReason('');
+                }} 
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 font-medium" 
+                type="button"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
