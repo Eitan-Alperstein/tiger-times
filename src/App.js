@@ -480,7 +480,7 @@ const WeatherWidget = () => {
   const [weather, setWeather] = useState(null);
   
   useEffect(() => {
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&current_weather=true&temperature_unit=fahrenheit')
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.7392&longitude=-104.9903&current_weather=true&temperature_unit=fahrenheit')
       .then(res => res.json())
       .then(data => setWeather(data.current_weather))
       .catch(() => setWeather({temperature: 72, weathercode: 0}));
@@ -488,7 +488,7 @@ const WeatherWidget = () => {
   
   return (
     <div className="col-span-full bg-blue-50 border border-blue-200 rounded-lg p-4">
-      <h3 className="text-lg font-bold text-blue-800 mb-2">Weather - New York</h3>
+      <h3 className="text-lg font-bold text-blue-800 mb-2">Weather - Denver</h3>
       <div className="flex items-center gap-4">
         <div className="text-3xl">{weather?.weathercode === 0 ? '☀️' : weather?.weathercode < 3 ? '⛅' : '🌧️'}</div>
         <div>
@@ -955,34 +955,27 @@ const getCardSize = (article, index) => {
   const hoursOld = (now - articleDate) / (1000 * 60 * 60);
   const views = article.views || 0;
   
-  // Disable hero cards - they look off
-  // if (index === 0 && views > 80) {
-  //   return 'hero';
-  // }
-  // Breaking news banner
-  if (article.category === 'News' && hoursOld < 2 && views > 40) {
+  // Breaking news banner (reduced frequency)
+  if (article.category === 'News' && hoursOld < 2 && views > 60 && index % 8 === 0) {
     return 'banner';
   }
-  // Compact news list items (skip first few articles)
-  if (article.category === 'News' && index > 3 && index % 7 === 0) {
-    return 'compact';
-  }
-  // Wide feature
-  if (['Features', 'Arts'].includes(article.category) && views > 25) {
+  // Wide feature (reduced frequency)
+  if (['Features', 'Arts'].includes(article.category) && views > 40 && index % 6 === 0) {
     return 'wide';
   }
-  // Tall spotlight
-  if (article.category === 'Opinion' && views > 15) {
+  // Tall spotlight (reduced frequency)
+  if (article.category === 'Opinion' && views > 30 && index % 7 === 0) {
     return 'tall';
   }
-  // Standard cards
-  if (hoursOld < 24 || views > 20) {
-    return 'medium';
-  }
-  // Fill gaps with tiny cards
-  if (index % 5 === 0) {
+  // More tiny cards for gap filling
+  if (index % 3 === 0 || (views < 10 && index % 4 === 0)) {
     return 'tiny';
   }
+  // Medium cards for popular content
+  if (views > 25 && hoursOld < 48) {
+    return 'medium';
+  }
+  // Default to small cards
   return 'small';
 };
 
@@ -1231,11 +1224,30 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4" style={{gridAutoRows: 'minmax(120px, max-content)'}}>
-            {filteredArticles.map((article, index) => {
-              const widgets = [];
+            {(() => {
+              let currentRow = 0;
+              let currentCol = 0;
+              let articlesInSection = 0;
+              let widgetCount = 0;
               
-              if (index > 0 && index % 5 === 0) {
-                const widgetType = Math.floor(index / 5) % 5;
+              return filteredArticles.map((article, index) => {
+                const widgets = [];
+                const size = getCardSize(article, index);
+                const columnSpan = {
+                  banner: 4, wide: 3, tall: 1, medium: 2, small: 2, tiny: 1
+                }[size] || 2;
+                
+                if (currentCol + columnSpan > 6) {
+                  currentCol = 0;
+                  currentRow++;
+                }
+                
+                if (currentRow >= 3 && articlesInSection > 0 && !searchTerm) {
+                  const widgetType = widgetCount % 5;
+                  widgetCount++;
+                  currentRow = 0;
+                  currentCol = 0;
+                  articlesInSection = 0;
                 
                 if (widgetType === 0) {
                   widgets.push(
@@ -1260,6 +1272,9 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
                 }
               }
               
+              currentCol += columnSpan;
+              articlesInSection++;
+              
               return [
                 ...widgets,
                 <ArticleCard
@@ -1274,7 +1289,8 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
                   }}
                 />
               ];
-            }).flat()}
+            }).flat()
+          })()}
           </div>
         )}
       </div>
@@ -1931,21 +1947,21 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
 
       <div className="flex gap-4 mb-8 border-b border-gray-200">
         <button
-          onClick={() => setSection('articles')}
+          onClick={() => { setSection('articles'); window.history.pushState({}, '', '?page=admin&section=articles'); }}
           className={`px-4 py-2 font-medium border-b-2 ${section === 'articles' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-600'}`}
           type="button"
         >
           <FileText className="inline mr-2" size={18} /> Articles
         </button>
         <button
-          onClick={() => setSection('writers')}
+          onClick={() => { setSection('writers'); window.history.pushState({}, '', '?page=admin&section=writers'); }}
           className={`px-4 py-2 font-medium border-b-2 ${section === 'writers' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-600'}`}
           type="button"
         >
           <Users className="inline mr-2" size={18} /> Staff
         </button>
         <button
-          onClick={() => setSection('analytics')}
+          onClick={() => { setSection('analytics'); window.history.pushState({}, '', '?page=admin&section=analytics'); }}
           className={`px-4 py-2 font-medium border-b-2 ${section === 'analytics' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-600'}`}
           type="button"
         >
@@ -2185,8 +2201,15 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const articleId = params.get('article');
+    const page = params.get('page');
+    const category = params.get('category');
+    const adminSection = params.get('section');
+    
     if (articleId) {
       fetchArticleById(articleId);
+    } else if (page) {
+      setCurrentPage(page);
+      if (category) setSearchTerm(category);
     }
   }, []);
 
