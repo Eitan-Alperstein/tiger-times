@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, LogOut, Menu, X, Send, Trash2, Edit2, Plus, BarChart3, Users, FileText, Heart, MessageCircle, Eye } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import './App.css';
 
@@ -929,9 +929,11 @@ const CategoryNav = ({ setSearchTerm, setCurrentPage, currentUser, searchTerm })
       {currentUser && currentUser.role === 'admin' && (
         <button onClick={() => setCurrentPage('admin')} className="text-gray-100 hover:text-red-200" type="button">Admin</button>
       )}
-      <button onClick={handleWriteClick} className="text-gray-100 hover:text-red-200 cursor-pointer z-10 relative" type="button">
-        Write
-      </button>
+      {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
+        <button onClick={handleWriteClick} className="text-gray-100 hover:text-red-200 cursor-pointer z-10 relative" type="button">
+          Write
+        </button>
+      )}
     </nav>
   );
 };
@@ -2168,6 +2170,9 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2181,8 +2186,8 @@ export default function App() {
             const userData = {
               email: firebaseUser.email,
               name: firebaseUser.email.split('@')[0],
-              role: 'admin',
-              bio: 'Administrator'
+              role: 'viewer',
+              bio: 'Reader'
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), userData);
             setCurrentUser({ id: firebaseUser.uid, ...userData });
@@ -2225,15 +2230,21 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+      } else {
+        await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      }
       setAuthEmail('');
       setAuthPassword('');
+      setAuthName('');
+      setShowAuthModal(false);
       setCurrentPage('home');
     } catch (error) {
-      alert('Login failed: ' + error.message);
+      alert((isSignUp ? 'Sign up' : 'Login') + ' failed: ' + error.message);
     }
   };
 
@@ -2255,44 +2266,7 @@ export default function App() {
     );
   }
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full border border-gray-200">
-          <h1 className="text-4xl font-serif font-bold text-gray-900 text-center mb-2">The Tiger Times</h1>
-          <p className="text-center text-gray-600 text-sm mb-6">Staff Login</p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="email"
-              placeholder="Email"
-              value={authEmail}
-              onChange={(e) => setAuthEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={authPassword}
-              onChange={(e) => setAuthPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
-              required
-            />
-            <button type="submit" className="w-full bg-red-600 text-white py-2 rounded font-bold hover:bg-red-700">
-              Login
-            </button>
-          </form>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded text-xs text-gray-600">
-            <p className="font-semibold mb-2">Demo Account:</p>
-            <p>Email: eitan.alperstein@gmail.com</p>
-            <p className="text-gray-500 mt-1">Use the password you set in Firebase</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -2311,10 +2285,16 @@ export default function App() {
                 <CategoryNav setSearchTerm={setSearchTerm} setCurrentPage={setCurrentPage} currentUser={currentUser} searchTerm={searchTerm} />
               </div>
               <div className="flex items-center justify-end space-x-4">
-                {currentUser && <span className="text-sm">{currentUser.name}</span>}
-                {currentUser && (
-                  <button onClick={handleLogout} className="text-white hover:text-red-200" type="button">
-                    <LogOut size={16} />
+                {currentUser ? (
+                  <>
+                    <span className="text-sm">{currentUser.name}</span>
+                    <button onClick={handleLogout} className="text-white hover:text-red-200" type="button">
+                      <LogOut size={16} />
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setShowAuthModal(true)} className="bg-white text-red-700 px-3 py-1 rounded text-sm font-medium hover:bg-gray-100" type="button">
+                    Login / Sign Up
                   </button>
                 )}
                 <button onClick={() => setCurrentPage('search')} className="text-white hover:text-red-200" type="button">
@@ -2369,7 +2349,7 @@ export default function App() {
                     )}
                     {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
                       <button onClick={() => { setCurrentPage('writer'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">
-                        {currentUser.role === 'admin' ? 'WRITE' : currentUser.role === 'editor' ? 'MANAGE' : 'WRITE'}
+                        WRITE
                       </button>
                     )}
                   </div>
@@ -2384,8 +2364,62 @@ export default function App() {
       {currentPage === 'home' && <HomePage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
       {currentPage === 'search' && <SearchPage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
       {currentPage === 'article' && currentArticle && <ArticlePage article={currentArticle} setCurrentPage={setCurrentPage} currentUser={currentUser} />}
-      {currentPage === 'writer' && <WriterDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
-      {currentPage === 'admin' && currentUser.role === 'admin' && <AdminDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
+      {currentPage === 'writer' && currentUser && <WriterDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
+      {currentPage === 'admin' && currentUser?.role === 'admin' && <AdminDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
+      
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{isSignUp ? 'Sign Up' : 'Login'}</h2>
+              <button onClick={() => setShowAuthModal(false)} className="text-gray-500 hover:text-gray-700" type="button">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAuth} className="space-y-4">
+              {isSignUp && (
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                />
+              )}
+              <input
+                type="email"
+                placeholder="Email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                required
+              />
+              <button type="submit" className="w-full bg-red-600 text-white py-2 rounded font-bold hover:bg-red-700">
+                {isSignUp ? 'Sign Up' : 'Login'}
+              </button>
+            </form>
+            
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => setIsSignUp(!isSignUp)} 
+                className="text-red-600 hover:text-red-700 text-sm"
+                type="button"
+              >
+                {isSignUp ? 'Already have an account? Login' : "Don't have an account? Sign up"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
