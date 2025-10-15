@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, LogOut, Menu, X, Send, Trash2, Edit2, Plus, BarChart3, Users, FileText, Heart, MessageCircle, Eye } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import './App.css';
 
@@ -18,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
 // ============ IMAGE UTILITIES ============
 const resizeImage = (file, maxWidth = 300, maxHeight = 200) => {
@@ -1168,7 +1169,7 @@ const SearchPage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTe
 };
 
 // ============ HOME PAGE ============
-const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm }) => {
+const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm, showSunrise }) => {
   const [articles, setArticles] = useState([]);
   const [filteredArticles, setFilteredArticles] = useState([]);
   const [authorNames, setAuthorNames] = useState({});
@@ -1216,7 +1217,7 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
 
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {loading ? (
+        {loading && !showSunrise ? (
           <div className="text-center py-12">
             <p className="text-gray-500">Loading articles...</p>
           </div>
@@ -2085,6 +2086,9 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
               <button onClick={deleteTestArticles} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium" type="button">
                 Delete Test Articles
               </button>
+              <button onClick={() => { localStorage.removeItem('tiger-times-visited'); window.location.href = '/'; }} className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 font-medium" type="button">
+                Test Animation
+              </button>
             </div>
           </div>
         </div>
@@ -2161,6 +2165,34 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
   );
 };
 
+// ============ LIGHT CIRCLE ANIMATION COMPONENT ============
+const LightAnimation = ({ onComplete, pageContent }) => {
+  useEffect(() => {
+    const completeTimer = setTimeout(onComplete, 6600);
+    return () => clearTimeout(completeTimer);
+  }, [onComplete]);
+
+  return (
+    <>
+      <div className="page-behind">
+        {pageContent}
+      </div>
+      <div className="light-overlay">
+        <button onClick={onComplete} className="light-skip">
+          Skip
+        </button>
+        
+        <div className="light-circle"></div>
+        
+        <div className="light-content">
+          <h1 className="light-title">The Tiger Times</h1>
+          <p className="light-motto">"Let there be light"</p>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ============ MAIN APP ============
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -2173,7 +2205,10 @@ export default function App() {
   const [authName, setAuthName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  
+
   const [loading, setLoading] = useState(true);
+  const [showSunrise, setShowSunrise] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -2201,6 +2236,16 @@ export default function App() {
       setLoading(false);
     });
     return unsubscribe;
+  }, []);
+
+  // Check for first visit immediately
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('tiger-times-visited');
+    console.log('Has visited:', hasVisited);
+    if (!hasVisited) {
+      console.log('Setting showSunrise to true');
+      setShowSunrise(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -2248,6 +2293,16 @@ export default function App() {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      setShowAuthModal(false);
+      setCurrentPage('home');
+    } catch (error) {
+      alert('Google sign in failed: ' + error.message);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -2258,17 +2313,27 @@ export default function App() {
     }
   };
 
-  if (loading) {
+  const handleSunriseComplete = () => {
+    localStorage.setItem('tiger-times-visited', 'true');
+    setShowSunrise(false);
+  };
+
+  if (loading && !showSunrise) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-white flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+        <div className="mb-4">
+          <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full animate-pulse" style={{width: '60%'}}></div>
+          </div>
+        </div>
+        <p className="text-white text-lg font-medium">Loading your experience...</p>
       </div>
     );
   }
 
-
-
-  return (
+  console.log('showSunrise:', showSunrise, 'loading:', loading);
+  
+  const pageContent = (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header>
@@ -2320,55 +2385,26 @@ export default function App() {
             </div>
           </div>
         </div>
-
-
-
-        {/* Mobile Menu */}
-        {showMobileMenu && (
-          <div className="fixed inset-0 z-50">
-            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)} />
-            <div className="absolute top-0 left-0 w-64 h-full bg-white shadow-xl">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-6">
-                  <button onClick={() => setShowMobileMenu(false)} className="p-2 bg-red-700 text-white rounded" type="button">
-                    <X size={16} />
-                  </button>
-                  <button onClick={() => { setCurrentPage('search'); setShowMobileMenu(false); }} className="p-2 text-gray-600 hover:text-red-600" type="button">
-                    <Search size={16} />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <button onClick={() => { setSearchTerm('News'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">NEWS</button>
-                  <button onClick={() => { setSearchTerm('Opinion'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-blue-600 hover:text-red-600 font-medium" type="button">OPINION</button>
-                  <button onClick={() => { setSearchTerm('Arts'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">ARTS</button>
-                  <button onClick={() => { setSearchTerm('Sports'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">SPORTS</button>
-                  <button onClick={() => { setSearchTerm('Features'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">FEATURES</button>
-                  <div className="border-t border-gray-200 pt-4 mt-4">
-                    {currentUser && currentUser.role === 'admin' && (
-                      <button onClick={() => { setCurrentPage('admin'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">ADMIN</button>
-                    )}
-                    {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
-                      <button onClick={() => { setCurrentPage('writer'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">
-                        WRITE
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Page Content */}
-      {currentPage === 'home' && <HomePage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
+      {currentPage === 'home' && <HomePage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} showSunrise={showSunrise} />}
       {currentPage === 'search' && <SearchPage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
       {currentPage === 'article' && currentArticle && <ArticlePage article={currentArticle} setCurrentPage={setCurrentPage} currentUser={currentUser} />}
       {currentPage === 'writer' && currentUser && <WriterDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
       {currentPage === 'admin' && currentUser?.role === 'admin' && <AdminDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
-      
+    </div>
+  );
+
+  if (showSunrise) {
+    return <LightAnimation onComplete={handleSunriseComplete} pageContent={pageContent} />;
+  }
+
+  return (
+    <>
+      {pageContent}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
           <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">{isSignUp ? 'Sign Up' : 'Login'}</h2>
@@ -2408,6 +2444,23 @@ export default function App() {
               </button>
             </form>
             
+            <div className="mt-4">
+              <div className="text-center text-gray-500 text-sm mb-4">or</div>
+              <button 
+                onClick={handleGoogleAuth}
+                className="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded font-medium hover:bg-gray-50 flex items-center justify-center gap-2"
+                type="button"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continue with Google
+              </button>
+            </div>
+            
             <div className="mt-4 text-center">
               <button 
                 onClick={() => setIsSignUp(!isSignUp)} 
@@ -2420,6 +2473,6 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

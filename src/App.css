@@ -678,3 +678,400 @@ select:focus {
 .animate-marquee {
   animation: marquee 30s linear infinite;
 }
+
+/* ============================================
+   "LET THERE BE LIGHT" CIRCLE ANIMATION
+   ============================================ */
+.light-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayToTransparent 0.1s ease-out 4s forwards;
+}
+
+.page-behind {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9998;
+  filter: blur(5px);
+  opacity: 0;
+  animation: pageAppear 0.1s ease-out 4s forwards, pageFocus 1s ease-out 5.5s forwards;
+}
+
+.light-circle {
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  animation: lightExpand 3s ease-out forwards;
+  aspect-ratio: 1;
+}
+
+.light-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  opacity: 0;
+  filter: blur(2px);
+  animation: contentFocus 0.75s ease-out 2.25s forwards, contentColorChange 0.1s ease-out 4s forwards, contentBlur 1s ease-out 5.5s forwards;
+}
+
+.main-content {
+  filter: blur(5px);
+  opacity: 0;
+  animation: mainContentFocus 0.5s ease-out 4s forwards;
+}
+
+.light-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.light-motto {
+  font-family: 'Crimson Text', serif;
+  font-size: 1.2rem;
+  font-style: italic;
+}
+
+.light-skip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.7);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  opacity: 0;
+  animation: skipFade 0.45s ease-out 1.5s forwards;
+}
+
+.light-skip:hover {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
+
+@keyframes lightExpand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+  10% {
+    width: 10px;
+    height: 10px;
+    opacity: 1;
+  }
+  100% {
+    width: 300vmax;
+    height: 300vmax;
+    opacity: 0;
+  }
+}
+
+@keyframes contentFocus {
+  0% {
+    opacity: 0;
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+@keyframes contentBlur {
+  0% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0.3;
+    filter: blur(3px);
+  }
+}
+
+@keyframes mainContentFocus {
+  0% {
+    opacity: 0;
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+@keyframes skipFade {
+  to {
+    opacity: 0.8;
+  }
+}
+
+@keyframes overlayToTransparent {
+  to {
+    background: transparent;
+  }
+}
+
+@keyframes pageAppear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pageFocus {
+  to {
+    filter: blur(0px);
+  }
+}
+
+@keyframes contentColorChange {
+  to {
+    color: #000;
+  }
+}
+
+@media (max-width: 768px) {
+  .light-title {
+    font-size: 2rem;
+  }
+}
+.lightbulb-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbulb {
+  width: 80px;
+  height: 120px;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.bulb {
+  width: 80px;
+  height: 80px;
+  background: #333;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.bulb.on {
+  background: radial-gradient(circle, #fff 0%, #ffeb3b 70%, #ffc107 100%);
+  box-shadow: 0 0 50px #ffeb3b, 0 0 100px #ffeb3b, 0 0 150px #ffeb3b;
+}
+
+.base {
+  width: 60px;
+  height: 20px;
+  background: #666;
+  margin: 0 auto;
+  border-radius: 0 0 10px 10px;
+}
+
+.base.on {
+  background: #888;
+}
+
+.lightbulb-content {
+  text-align: center;
+  color: #333;
+  opacity: 0;
+  transition: all 0.5s ease;
+}
+
+.lightbulb-content.visible {
+  opacity: 1;
+  color: white;
+}
+
+.lightbulb-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.lightbulb-motto {
+  font-family: 'Crimson Text', serif;
+  font-size: 1.2rem;
+  font-style: italic;
+}
+
+.lightbulb-skip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.7);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.lightbulb-skip.visible {
+  opacity: 1;
+}
+
+.lightbulb-skip:hover {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .lightbulb-title {
+    font-size: 2rem;
+  }
+  .lightbulb {
+    width: 60px;
+    height: 90px;
+  }
+  .bulb {
+    width: 60px;
+    height: 60px;
+  }
+}
+.sunrise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: linear-gradient(
+    to top,
+    #ff6b00 0%,
+    #ffaa00 30%,
+    #ffffff 100%
+  );
+  transform: translateY(100%);
+  animation: sunrise 2.5s ease-out forwards;
+}
+
+.sunrise-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  opacity: 0;
+  animation: fadeInContent 1s ease-out 0.8s forwards;
+}
+
+.sunrise-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 4rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.sunrise-motto {
+  font-family: 'Crimson Text', serif;
+  font-size: 1.5rem;
+  font-style: italic;
+  opacity: 0;
+  animation: fadeInMotto 1s ease-out 1.5s forwards;
+}
+
+.sunrise-skip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  opacity: 0;
+  animation: fadeInSkip 0.5s ease-out 1s forwards;
+  transition: background 0.2s ease;
+}
+
+.sunrise-skip:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+@keyframes sunrise {
+  0% {
+    transform: translateY(100%);
+    background: #000000;
+  }
+  20% {
+    background: linear-gradient(to top, #1a0a00 0%, #000000 100%);
+  }
+  50% {
+    background: linear-gradient(to top, #ff6b00 0%, #1a0a00 50%, #000000 100%);
+  }
+  80% {
+    background: linear-gradient(to top, #ffaa00 0%, #ff6b00 30%, #1a0a00 70%, #000000 100%);
+  }
+  100% {
+    transform: translateY(0%);
+    background: linear-gradient(to top, #ffffff 0%, #ffaa00 20%, #ff6b00 40%, #1a0a00 80%, #000000 100%);
+  }
+}
+
+@keyframes fadeInContent {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInMotto {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInSkip {
+  to {
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 768px) {
+  .sunrise-title {
+    font-size: 2.5rem;
+  }
+  .sunrise-motto {
+    font-size: 1.2rem;
+  }
+}
+
