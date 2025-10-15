@@ -958,6 +958,10 @@ const getCardSize = (article, index) => {
   const hoursOld = (now - articleDate) / (1000 * 60 * 60);
   const views = article.views || 0;
   
+  // Hero card for first article
+  if (index === 0) {
+    return 'hero';
+  }
   // Breaking news banner (reduced frequency)
   if (article.category === 'News' && hoursOld < 2 && views > 60 && index % 8 === 0) {
     return 'banner';
@@ -1226,8 +1230,10 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
             <p className="text-gray-500 text-lg">No articles found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4" style={{gridAutoRows: 'minmax(120px, max-content)'}}>
-            {(() => {
+          <>
+            {/* Desktop Grid */}
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4" style={{gridAutoRows: 'minmax(120px, max-content)'}}>
+              {(() => {
               let currentRow = 0;
               let currentCol = 0;
               let articlesInSection = 0;
@@ -1245,7 +1251,7 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
                   currentRow++;
                 }
                 
-                if (currentRow >= 3 && articlesInSection > 0 && !searchTerm) {
+                if (currentRow >= 2 && articlesInSection > 0 && !searchTerm) {
                   const widgetType = widgetCount % 5;
                   widgetCount++;
                   currentRow = 0;
@@ -1294,7 +1300,76 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
               ];
             }).flat()
           })()}
-          </div>
+            </div>
+            
+            {/* Mobile List */}
+            <div className="md:hidden px-4 space-y-4">
+              {filteredArticles.map((article, index) => {
+                const isLarge = index % 4 === 0;
+                const isWide = index % 6 === 2;
+                
+                if (isLarge) {
+                  return (
+                    <div key={article.id} onClick={() => {
+                      setCurrentArticle(article);
+                      setCurrentPage('article');
+                      window.history.pushState({}, '', `?article=${article.id}`);
+                    }} className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer shadow-sm">
+                      {article.image && (
+                        <img src={article.image} alt={article.title} className="w-full h-48 object-cover rounded mb-3" />
+                      )}
+                      <div className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">{article.category}</div>
+                      <h3 className="text-lg font-bold text-gray-900 line-clamp-3 leading-tight mb-2">{article.title}</h3>
+                      <div className="text-xs text-gray-500">
+                        By {authorNames[article.authorId] || 'Unknown'} • {new Date(article.createdAt?.toDate?.()).toLocaleDateString()}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                if (isWide) {
+                  return (
+                    <div key={article.id} onClick={() => {
+                      setCurrentArticle(article);
+                      setCurrentPage('article');
+                      window.history.pushState({}, '', `?article=${article.id}`);
+                    }} className="bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">{article.category}</div>
+                          <h3 className="text-base font-bold text-gray-900 line-clamp-2">{article.title}</h3>
+                        </div>
+                        {article.image && (
+                          <img src={article.image} alt={article.title} className="w-16 h-16 object-cover rounded flex-shrink-0" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div key={article.id} onClick={() => {
+                    setCurrentArticle(article);
+                    setCurrentPage('article');
+                    window.history.pushState({}, '', `?article=${article.id}`);
+                  }} className="bg-white border-b border-gray-200 pb-4 cursor-pointer">
+                    <div className="flex gap-3">
+                      {article.image && (
+                        <img src={article.image} alt={article.title} className="w-20 h-20 object-cover rounded flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">{article.category}</div>
+                        <h3 className="text-base font-bold text-gray-900 line-clamp-3 leading-tight mb-2">{article.title}</h3>
+                        <div className="text-xs text-gray-500">
+                          By {authorNames[article.authorId] || 'Unknown'} • {new Date(article.createdAt?.toDate?.()).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -2211,6 +2286,10 @@ export default function App() {
   const [showSunrise, setShowSunrise] = useState(false);
 
   useEffect(() => {
+    document.title = 'The Tiger Times';
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -2341,15 +2420,19 @@ export default function App() {
         <div className="bg-red-700 text-white">
           <div className="max-w-7xl mx-auto px-4">
             <div className="grid grid-cols-3 items-center py-2">
-              <div className="flex items-center">
+              <div className="flex items-center relative">
                 <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="text-white p-2 border border-white" type="button">
-                  <Menu size={16} />
+                  {showMobileMenu ? <X size={16} /> : <Menu size={16} />}
                 </button>
+
               </div>
               <div className="flex justify-center">
                 <CategoryNav setSearchTerm={setSearchTerm} setCurrentPage={setCurrentPage} currentUser={currentUser} searchTerm={searchTerm} />
               </div>
               <div className="flex items-center justify-end space-x-4">
+                <button onClick={() => setCurrentPage('search')} className="text-white hover:text-red-200" type="button">
+                  <Search size={16} />
+                </button>
                 {currentUser ? (
                   <>
                     <span className="text-sm">{currentUser.name}</span>
@@ -2362,9 +2445,6 @@ export default function App() {
                     Login / Sign Up
                   </button>
                 )}
-                <button onClick={() => setCurrentPage('search')} className="text-white hover:text-red-200" type="button">
-                  <Search size={16} />
-                </button>
               </div>
             </div>
           </div>
@@ -2386,6 +2466,31 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Sidebar Menu */}
+      <div className={`fixed top-32 left-0 w-48 h-full bg-white border-r border-gray-200 shadow-lg z-50 transform transition-transform duration-300 ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <button onClick={() => setShowMobileMenu(false)} className="text-gray-500 hover:text-gray-700" type="button">
+              <X size={20} />
+            </button>
+            <button onClick={() => { setCurrentPage('search'); setShowMobileMenu(false); }} className="text-gray-700 hover:text-red-600" type="button">
+              <Search size={20} />
+            </button>
+          </div>
+          <div className="space-y-4">
+            {['News', 'Opinion', 'Arts', 'Sports', 'Features'].map(cat => (
+              <button key={cat} onClick={() => { setSearchTerm(cat); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left text-gray-700 hover:text-red-600 uppercase tracking-wide text-sm font-medium" type="button">{cat}</button>
+            ))}
+            {currentUser && currentUser.role === 'admin' && (
+              <button onClick={() => { setCurrentPage('admin'); setShowMobileMenu(false); }} className="block w-full text-left text-gray-700 hover:text-red-600 uppercase tracking-wide text-sm font-medium" type="button">Admin</button>
+            )}
+            {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
+              <button onClick={() => { setCurrentPage('writer'); setShowMobileMenu(false); }} className="block w-full text-left text-gray-700 hover:text-red-600 uppercase tracking-wide text-sm font-medium" type="button">Write</button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Page Content */}
       {currentPage === 'home' && <HomePage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} showSunrise={showSunrise} />}
