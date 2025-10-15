@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, LogOut, Menu, X, Send, Trash2, Edit2, Plus, BarChart3, Users, FileText, Heart, MessageCircle } from 'lucide-react';
+import { Search, LogOut, Menu, X, Send, Trash2, Edit2, Plus, BarChart3, Users, FileText, Heart, MessageCircle, Eye } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
@@ -18,6 +18,66 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// ============ IMAGE UTILITIES ============
+const resizeImage = (file, maxWidth = 300, maxHeight = 200) => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+const searchUnsplashImages = async (query) => {
+  try {
+    const response = await fetch(`https://pixabay.com/api/?key=9656065-a4094594c34f9ac14c7fc4c39&q=${encodeURIComponent(query)}&image_type=photo&per_page=12&safesearch=true`);
+    const data = await response.json();
+    return data.hits?.map(hit => ({
+      urls: { small: hit.webformatURL, regular: hit.largeImageURL },
+      alt_description: hit.tags
+    })) || [];
+  } catch (error) {
+    console.error('Error searching images:', error);
+    return [];
+  }
+};
+
+const convertImageToBase64 = async (imageUrl) => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 300;
+          canvas.height = 200;
+          ctx.drawImage(img, 0, 0, 300, 200);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error converting image:', error);
+    return null;
+  }
+};
 
 // ============ BAD WORDS FILTER ============
 const BAD_WORDS = ['badword1', 'badword2', 'inappropriate', 'offensive'];
@@ -284,6 +344,13 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
 const CategoryNav = ({ setSearchTerm, setCurrentPage, currentUser, searchTerm }) => {
   const categories = ['News', 'Opinion', 'Arts', 'Sports', 'Features'];
 
+  const handleWriteClick = () => {
+    console.log('Write clicked');
+    setCurrentPage('writer');
+  };
+
+  console.log('Current user role:', currentUser?.role);
+
   return (
     <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
       {categories.map(cat => (
@@ -299,11 +366,9 @@ const CategoryNav = ({ setSearchTerm, setCurrentPage, currentUser, searchTerm })
       {currentUser && currentUser.role === 'admin' && (
         <button onClick={() => setCurrentPage('admin')} className="text-gray-100 hover:text-red-200" type="button">Admin</button>
       )}
-      {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
-        <button onClick={() => setCurrentPage('writer')} className="text-gray-100 hover:text-red-200" type="button">
-          {currentUser.role === 'admin' ? 'Write' : currentUser.role === 'editor' ? 'Manage' : 'Write'}
-        </button>
-      )}
+      <button onClick={handleWriteClick} className="text-gray-100 hover:text-red-200 cursor-pointer z-10 relative" type="button">
+        Write
+      </button>
     </nav>
   );
 };
@@ -323,11 +388,20 @@ const MobileCategoryNav = ({ setSearchTerm, setCurrentPage, setShowMobileMenu })
 // ============ ARTICLE CARD COMPONENT ============
 const ArticleCard = ({ article, authorName, onRead }) => (
   <div onClick={() => onRead(article)} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer">
-    <div className="p-4">
-      <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">{article.category}</div>
-      <h3 className="text-xl font-bold text-gray-900 mt-1 line-clamp-2">{article.title}</h3>
-      <div className="text-sm text-gray-500 mt-2">By {authorName}</div>
-      <div className="text-xs text-gray-400 mt-1">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+    <div className={`p-4 ${article.image ? 'flex gap-4' : ''}`}>
+      {article.image && (
+        <img 
+          src={article.image} 
+          alt={article.title}
+          className="w-24 h-16 object-cover rounded flex-shrink-0"
+        />
+      )}
+      <div className="flex-1">
+        <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">{article.category}</div>
+        <h3 className="text-xl font-bold text-gray-900 mt-1 line-clamp-2">{article.title}</h3>
+        <div className="text-sm text-gray-500 mt-2">By {authorName}</div>
+        <div className="text-xs text-gray-400 mt-1">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+      </div>
     </div>
   </div>
 );
@@ -513,7 +587,26 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
   useEffect(() => {
     fetchComments();
     fetchAuthor();
+    incrementViewCount();
   }, [article]);
+
+  const incrementViewCount = async () => {
+    if (!currentUser) return;
+    
+    const viewKey = `viewed_${article.id}`;
+    const hasViewed = localStorage.getItem(viewKey);
+    
+    if (!hasViewed) {
+      try {
+        await updateDoc(doc(db, 'articles', article.id), {
+          views: (article.views || 0) + 1
+        });
+        localStorage.setItem(viewKey, 'true');
+      } catch (error) {
+        console.error('Error updating view count:', error);
+      }
+    }
+  };
 
   const fetchComments = async () => {
     try {
@@ -619,10 +712,14 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
           }} className="text-red-600 hover:text-red-700 font-medium mb-4" type="button">← Back</button>
           <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">{article.category}</div>
           <h1 className="text-5xl font-serif font-bold text-gray-900 mt-2">{article.title}</h1>
-          <div className="flex items-center mt-4 text-gray-600">
+          <div className="flex items-center justify-between mt-4 text-gray-600">
             <div>
               <div className="font-semibold">{authorName}</div>
               <div className="text-sm text-gray-500">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+            </div>
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <Eye size={16} />
+              {article.views || 0}
             </div>
           </div>
         </div>
@@ -684,7 +781,10 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
 const WriterDashboard = ({ currentUser, setCurrentPage }) => {
   const [articles, setArticles] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ title: '', content: '', category: 'News' });
+  const [formData, setFormData] = useState({ title: '', content: '', category: 'News', image: '' });
+  const [imageSearch, setImageSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showImageSearch, setShowImageSearch] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -708,7 +808,9 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
 
   const handleNew = () => {
     setEditingId('new');
-    setFormData({ title: '', content: '', category: 'News' });
+    setFormData({ title: '', content: '', category: 'News', image: '' });
+    setShowImageSearch(false);
+    setSearchResults([]);
   };
 
   const handleSave = async () => {
@@ -724,6 +826,7 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
           title: formData.title,
           content: formData.content,
           category: formData.category,
+          image: formData.image,
           authorId: currentUser.id,
           status: 'pending_review',
           createdAt: new Date(),
@@ -734,13 +837,16 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
           title: formData.title,
           content: formData.content,
           category: formData.category,
+          image: formData.image,
           status: 'pending_review',
           revisionReason: null,
           updatedAt: new Date()
         });
       }
       setEditingId(null);
-      setFormData({ title: '', content: '', category: 'News' });
+      setFormData({ title: '', content: '', category: 'News', image: '' });
+      setShowImageSearch(false);
+      setSearchResults([]);
       await fetchArticles();
     } catch (error) {
       console.error('Error saving article:', error);
@@ -791,6 +897,87 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
             <option>Arts</option>
           </select>
           <RichTextEditor value={formData.content} onChange={(content) => setFormData({...formData, content})} />
+          
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Article Image</label>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const base64 = await resizeImage(file);
+                      setFormData({...formData, image: base64});
+                    }
+                  }}
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowImageSearch(!showImageSearch)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Search Images
+                </button>
+              </div>
+              
+              {showImageSearch && (
+                <div className="border border-gray-300 rounded p-4">
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search for images..."
+                      value={imageSearch}
+                      onChange={(e) => setImageSearch(e.target.value)}
+                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const results = await searchUnsplashImages(imageSearch);
+                        setSearchResults(results);
+                      }}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    >
+                      Search
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                    {searchResults.map((img, idx) => (
+                      <img
+                        key={idx}
+                        src={img.urls?.small}
+                        alt={img.alt_description}
+                        className="w-full h-24 object-cover cursor-pointer border border-gray-300 rounded hover:border-red-600"
+                        onClick={async () => {
+                          const base64 = await convertImageToBase64(img.urls?.regular);
+                          if (base64) {
+                            setFormData({...formData, image: base64});
+                            setShowImageSearch(false);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {formData.image && (
+                <div className="mt-2">
+                  <img src={formData.image} alt="Selected" className="w-32 h-20 object-cover border border-gray-300 rounded" />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, image: ''})}
+                    className="ml-2 text-red-600 hover:text-red-700 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex gap-2 mt-4">
             <button onClick={handleSave} className="bg-red-600 text-white px-6 py-2 rounded font-medium hover:bg-red-700" type="button">
               Submit for Review
@@ -1068,13 +1255,6 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => promoteToEditor(writer.id, writer.role)}
-                    className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                    type="button"
-                  >
-                    {writer.role === 'editor' ? 'Demote' : 'Promote'}
-                  </button>
                   <button onClick={() => removeWriter(writer.id)} className="text-red-600 hover:text-red-700" type="button">
                     <Trash2 size={18} />
                   </button>
@@ -1088,7 +1268,7 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
       {section === 'analytics' && (
         <div>
           <h2 className="text-2xl font-bold mb-4">Analytics Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="text-gray-600 text-sm font-medium">Published Articles</div>
               <div className="text-3xl font-bold text-gray-900 mt-2">{stats.totalArticles}</div>
@@ -1096,14 +1276,6 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="text-gray-600 text-sm font-medium">Total Views</div>
               <div className="text-3xl font-bold text-gray-900 mt-2">{stats.totalViews}</div>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="text-gray-600 text-sm font-medium">Active Writers</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">{stats.writers}</div>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="text-gray-600 text-sm font-medium">Editors</div>
-              <div className="text-3xl font-bold text-gray-900 mt-2">{stats.editors}</div>
             </div>
           </div>
         </div>
@@ -1349,7 +1521,7 @@ export default function App() {
             </div>
             <div className="grid grid-cols-3 items-center text-sm text-gray-600">
               <div className="text-left">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-              <div className="text-center font-serif italic">The University Daily Est. 2024</div>
+              <div className="text-center font-serif italic"><strong><i>"Let there be light"</i></strong></div>
               <div className="text-right">VOLUME I</div>
             </div>
           </div>
