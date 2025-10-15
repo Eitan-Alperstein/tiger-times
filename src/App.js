@@ -3,6 +3,7 @@ import { Search, LogOut, Menu, X, Send, Trash2, Edit2, Plus, BarChart3, Users, F
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import './App.css';
 
 // ============ FIREBASE CONFIG ============
 const firebaseConfig = {
@@ -279,6 +280,46 @@ const CommentThread = ({ comment, commentAuthor, currentUser, articleId, onLike,
   );
 };
 
+// ============ CATEGORY NAVIGATION ============
+const CategoryNav = ({ setSearchTerm, setCurrentPage, currentUser, searchTerm }) => {
+  const categories = ['News', 'Opinion', 'Arts', 'Sports', 'Features'];
+
+  return (
+    <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+      {categories.map(cat => (
+        <button 
+          key={cat} 
+          onClick={() => { setSearchTerm(cat); setCurrentPage('home'); }} 
+          className={`text-gray-100 hover:text-red-200 ${searchTerm === cat ? 'text-red-200 underline' : ''}`} 
+          type="button"
+        >
+          {cat}
+        </button>
+      ))}
+      {currentUser && currentUser.role === 'admin' && (
+        <button onClick={() => setCurrentPage('admin')} className="text-gray-100 hover:text-red-200" type="button">Admin</button>
+      )}
+      {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
+        <button onClick={() => setCurrentPage('writer')} className="text-gray-100 hover:text-red-200" type="button">
+          {currentUser.role === 'admin' ? 'Write' : currentUser.role === 'editor' ? 'Manage' : 'Write'}
+        </button>
+      )}
+    </nav>
+  );
+};
+
+const MobileCategoryNav = ({ setSearchTerm, setCurrentPage, setShowMobileMenu }) => {
+  const categories = ['News', 'Opinion', 'Arts', 'Sports', 'Features'];
+
+  return (
+    <>
+      {categories.map(cat => (
+        <button key={cat} onClick={() => { setSearchTerm(cat); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 hover:text-red-200" type="button">{cat}</button>
+      ))}
+    </>
+  );
+};
+
 // ============ ARTICLE CARD COMPONENT ============
 const ArticleCard = ({ article, authorName, onRead }) => (
   <div onClick={() => onRead(article)} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer">
@@ -290,6 +331,98 @@ const ArticleCard = ({ article, authorName, onRead }) => (
     </div>
   </div>
 );
+
+// ============ SEARCH PAGE ============
+const SearchPage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm }) => {
+  const [articles, setArticles] = useState([]);
+  const [filteredArticles, setFilteredArticles] = useState([]);
+  const [authorNames, setAuthorNames] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchArticles();
+  }, []);
+
+  const fetchArticles = async () => {
+    try {
+      const articlesRef = collection(db, 'articles');
+      const q = query(articlesRef, where('status', '==', 'published'), orderBy('createdAt', 'desc'));
+      const articlesSnap = await getDocs(q);
+      const articlesData = articlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setArticles(articlesData);
+
+      for (const article of articlesData) {
+        const userDoc = await getDoc(doc(db, 'users', article.authorId));
+        if (userDoc.exists()) {
+          setAuthorNames(prev => ({ ...prev, [article.authorId]: userDoc.data().name }));
+        }
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const filtered = articles.filter(a =>
+      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (authorNames[a.authorId]?.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredArticles(filtered);
+  }, [searchTerm, articles, authorNames]);
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <button onClick={() => setCurrentPage('home')} className="text-red-600 hover:text-red-700 font-medium mb-6" type="button">← Back to Home</button>
+      
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Search Articles</h1>
+        <div className="flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <Search size={20} className="text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search articles..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 bg-transparent focus:outline-none text-lg"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Loading articles...</p>
+        </div>
+      ) : filteredArticles.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">{searchTerm ? 'No articles found' : 'Enter a search term to find articles'}</p>
+        </div>
+      ) : (
+        <div>
+          <p className="text-gray-600 mb-6">{filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''} found</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredArticles.map(article => (
+              <ArticleCard
+                key={article.id}
+                article={article}
+                authorName={authorNames[article.authorId] || 'Unknown'}
+                onRead={(article) => {
+                  setCurrentArticle(article);
+                  setCurrentPage('article');
+                  window.history.pushState({}, '', `?article=${article.id}`);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ============ HOME PAGE ============
 const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm }) => {
@@ -337,24 +470,7 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
 
   return (
     <div>
-      <div className="bg-white border-b border-gray-200 py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-7xl font-serif font-bold text-gray-900">The Tiger Times</h1>
-          <p className="text-gray-500 mt-2">Integrity Over Tyranny, Freedom Forever</p>
-        </div>
-      </div>
 
-      <div className="bg-gray-50 border-b border-gray-200 py-4">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {categories.map(cat => (
-              <button key={cat} onClick={() => setSearchTerm(cat)} className="px-4 py-2 bg-white border border-gray-300 rounded-full text-sm font-medium hover:bg-gray-100 whitespace-nowrap" type="button">
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {loading ? (
@@ -1195,81 +1311,92 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-serif font-bold text-gray-900 cursor-pointer" onClick={() => { setCurrentPage('home'); setSearchTerm(''); }}>
-              The Tiger Times
-            </h1>
-            <div className="hidden md:flex items-center gap-4">
-              {currentUser.role === 'admin' && (
-                <button onClick={() => setCurrentPage('admin')} className="text-gray-600 hover:text-red-600 font-medium" type="button">
-                  Admin
+      <header>
+        {/* Top Navigation Bar */}
+        <div className="bg-red-700 text-white">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="grid grid-cols-3 items-center py-2">
+              <div className="flex items-center">
+                <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="text-white p-2 border border-white" type="button">
+                  <Menu size={16} />
                 </button>
-              )}
-              {(currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
-                <button onClick={() => setCurrentPage('writer')} className="text-gray-600 hover:text-red-600 font-medium" type="button">
-                  {currentUser.role === 'admin' ? 'Write' : currentUser.role === 'editor' ? 'Manage' : 'Write'}
+              </div>
+              <div className="flex justify-center">
+                <CategoryNav setSearchTerm={setSearchTerm} setCurrentPage={setCurrentPage} currentUser={currentUser} searchTerm={searchTerm} />
+              </div>
+              <div className="flex items-center justify-end space-x-4">
+                {currentUser && <span className="text-sm">{currentUser.name}</span>}
+                {currentUser && (
+                  <button onClick={handleLogout} className="text-white hover:text-red-200" type="button">
+                    <LogOut size={16} />
+                  </button>
+                )}
+                <button onClick={() => setCurrentPage('search')} className="text-white hover:text-red-200" type="button">
+                  <Search size={16} />
                 </button>
-              )}
+              </div>
             </div>
           </div>
-
-          <div className="hidden md:flex items-center gap-4 flex-1 max-w-md mx-8">
-            <Search size={20} className="text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search articles..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage('home');
-              }}
-              className="flex-1 bg-transparent focus:outline-none text-sm"
-            />
-          </div>
-
-          <div className="hidden md:flex items-center gap-4">
-            <span className="text-sm text-gray-600">{currentUser.name}</span>
-            <button onClick={handleLogout} className="text-gray-600 hover:text-red-600" type="button">
-              <LogOut size={20} />
-            </button>
-          </div>
-
-          {/* Mobile Menu */}
-          <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="md:hidden" type="button">
-            {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
-          </button>
         </div>
 
+        {/* Main Header */}
+        <div className="bg-white py-8">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center mb-6">
+              <h1 className="text-6xl font-serif text-red-700 font-normal cursor-pointer" onClick={() => { setCurrentPage('home'); setSearchTerm(''); }}>
+                The Tiger Times
+              </h1>
+            </div>
+            <div className="grid grid-cols-3 items-center text-sm text-gray-600">
+              <div className="text-left">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+              <div className="text-center font-serif italic">The University Daily Est. 2024</div>
+              <div className="text-right">VOLUME I</div>
+            </div>
+          </div>
+        </div>
+
+
+
+        {/* Mobile Menu */}
         {showMobileMenu && (
-          <div className="md:hidden bg-gray-50 border-t border-gray-200 p-4 space-y-3">
-            <input
-              type="text"
-              placeholder="Search articles..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-            {currentUser.role === 'admin' && (
-              <button onClick={() => { setCurrentPage('admin'); setShowMobileMenu(false); }} className="block w-full text-left px-3 py-2 text-gray-600 hover:bg-gray-100 rounded" type="button">
-                Admin
-              </button>
-            )}
-            {(currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
-              <button onClick={() => { setCurrentPage('writer'); setShowMobileMenu(false); }} className="block w-full text-left px-3 py-2 text-gray-600 hover:bg-gray-100 rounded" type="button">
-                {currentUser.role === 'admin' ? 'Write' : currentUser.role === 'editor' ? 'Manage' : 'Write'}
-              </button>
-            )}
-            <button onClick={() => { handleLogout(); setShowMobileMenu(false); }} className="block w-full text-left px-3 py-2 text-gray-600 hover:bg-gray-100 rounded flex items-center gap-2" type="button">
-              <LogOut size={16} /> Logout
-            </button>
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)} />
+            <div className="absolute top-0 left-0 w-64 h-full bg-white shadow-xl">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-6">
+                  <button onClick={() => setShowMobileMenu(false)} className="p-2 bg-red-700 text-white rounded" type="button">
+                    <X size={16} />
+                  </button>
+                  <button onClick={() => { setCurrentPage('search'); setShowMobileMenu(false); }} className="p-2 text-gray-600 hover:text-red-600" type="button">
+                    <Search size={16} />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <button onClick={() => { setSearchTerm('News'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">NEWS</button>
+                  <button onClick={() => { setSearchTerm('Opinion'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-blue-600 hover:text-red-600 font-medium" type="button">OPINION</button>
+                  <button onClick={() => { setSearchTerm('Arts'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">ARTS</button>
+                  <button onClick={() => { setSearchTerm('Sports'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">SPORTS</button>
+                  <button onClick={() => { setSearchTerm('Features'); setCurrentPage('home'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">FEATURES</button>
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    {currentUser && currentUser.role === 'admin' && (
+                      <button onClick={() => { setCurrentPage('admin'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">ADMIN</button>
+                    )}
+                    {currentUser && (currentUser.role === 'writer' || currentUser.role === 'editor' || currentUser.role === 'admin') && (
+                      <button onClick={() => { setCurrentPage('writer'); setShowMobileMenu(false); }} className="block w-full text-left py-2 text-gray-800 hover:text-red-600 font-medium" type="button">
+                        {currentUser.role === 'admin' ? 'WRITE' : currentUser.role === 'editor' ? 'MANAGE' : 'WRITE'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </header>
 
       {/* Page Content */}
       {currentPage === 'home' && <HomePage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
+      {currentPage === 'search' && <SearchPage setCurrentPage={setCurrentPage} setCurrentArticle={setCurrentArticle} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />}
       {currentPage === 'article' && currentArticle && <ArticlePage article={currentArticle} setCurrentPage={setCurrentPage} currentUser={currentUser} />}
       {currentPage === 'writer' && <WriterDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}
       {currentPage === 'admin' && currentUser.role === 'admin' && <AdminDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} />}

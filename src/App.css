@@ -1,38 +1,665 @@
-.App {
-  text-align: center;
+/* ============================================
+   HARVARD CRIMSON INSPIRED STYLING
+   ============================================ */
+
+/* Import Google Fonts - Crimson uses classic serif fonts */
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Crimson+Text:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap');
+
+/* ============================================
+   ROOT VARIABLES - Harvard Crimson Colors
+   ============================================ */
+:root {
+  --harvard-crimson: #A51C30;
+  --crimson-dark: #8B1625;
+  --crimson-light: #C41E3A;
+  --ink-black: #1C1C1C;
+  --charcoal: #2C2C2C;
+  --light-gray: #F5F5F5;
+  --medium-gray: #E0E0E0;
+  --border-gray: #D4D4D4;
+  --text-gray: #4A4A4A;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* ============================================
+   GLOBAL RESETS & BASE STYLES
+   ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+body {
+  font-family: 'Crimson Text', 'Georgia', serif;
+  color: var(--ink-black);
+  background-color: #FFFFFF;
+  line-height: 1.7;
+  font-size: 18px;
+}
+
+/* ============================================
+   HEADER STYLING
+   ============================================ */
+header {
+  background-color: var(--harvard-crimson);
+  border-bottom: 3px solid var(--crimson-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+header h1 {
+  font-family: 'Libre Baskerville', 'Times New Roman', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ink-black);
+  letter-spacing: -0.02em;
+}
+
+header button,
+header a {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-gray);
+  transition: color 0.2s ease;
+}
+
+header button:hover,
+header a:hover {
+  color: var(--harvard-crimson);
+}
+
+header input[type="text"] {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  border: 1px solid var(--border-gray);
+  padding: 8px 12px;
+  border-radius: 2px;
+}
+
+header input[type="text"]:focus {
+  outline: none;
+  border-color: var(--harvard-crimson);
+}
+
+/* ============================================
+   MASTHEAD / TITLE SECTION
+   ============================================ */
+.bg-white.border-b.border-gray-200.py-8 {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid var(--border-gray);
+  padding: 3rem 0 2rem 0;
+}
+
+.bg-white.border-b.border-gray-200.py-8 h1 {
+  font-family: 'Libre Baskerville', 'Times New Roman', serif;
+  font-size: 4.5rem;
+  font-weight: 700;
+  color: var(--ink-black);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.bg-white.border-b.border-gray-200.py-8 p {
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--text-gray);
+  margin-top: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================
+   CATEGORY BAR
+   ============================================ */
+.bg-gray-50.border-b.border-gray-200.py-4 {
+  background-color: var(--light-gray);
+  border-bottom: 1px solid var(--border-gray);
+  border-top: 1px solid var(--border-gray);
+}
+
+.bg-gray-50.border-b.border-gray-200.py-4 button {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 1.25rem;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-gray);
+  color: var(--text-gray);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.bg-gray-50.border-b.border-gray-200.py-4 button:hover {
+  background-color: var(--harvard-crimson);
+  color: #FFFFFF;
+  border-color: var(--harvard-crimson);
+}
+
+/* ============================================
+   ARTICLE CARDS
+   ============================================ */
+.bg-white.border.border-gray-200.rounded-lg {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-gray);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.bg-white.border.border-gray-200.rounded-lg:hover {
+  box-shadow: 0 4px 12px rgba(165, 28, 48, 0.15);
+  border-color: var(--harvard-crimson);
+  transform: translateY(-2px);
+}
+
+.bg-white.border.border-gray-200.rounded-lg h3 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink-black);
+  line-height: 1.35;
+  margin-bottom: 0.75rem;
+}
+
+.bg-white.border.border-gray-200.rounded-lg .text-xs.font-semibold.text-red-600 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--harvard-crimson);
+}
+
+.bg-white.border.border-gray-200.rounded-lg .text-sm.text-gray-500 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  color: var(--text-gray);
+}
+
+/* ============================================
+   BUTTONS & CTAs
+   ============================================ */
+button,
+.button {
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.bg-red-600 {
+  background-color: var(--harvard-crimson) !important;
+}
+
+.bg-red-600:hover {
+  background-color: var(--crimson-dark) !important;
+}
+
+.text-red-600 {
+  color: var(--harvard-crimson) !important;
+}
+
+.text-red-600:hover {
+  color: var(--crimson-dark) !important;
+}
+
+.border-red-600 {
+  border-color: var(--harvard-crimson) !important;
+}
+
+.hover\:bg-red-700:hover {
+  background-color: var(--crimson-dark) !important;
+}
+
+.hover\:text-red-600:hover {
+  color: var(--harvard-crimson) !important;
+}
+
+.focus\:border-red-600:focus {
+  border-color: var(--harvard-crimson) !important;
+}
+
+/* ============================================
+   ARTICLE PAGE CONTENT
+   ============================================ */
+
+/* Article page main container - narrower width like Crimson */
+.max-w-4xl {
+  max-width: 680px !important;
+}
+
+/* Article header section styling */
+.bg-white.border-b.border-gray-200.py-8 {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid var(--border-gray);
+  padding: 1.5rem 0;
+}
+
+/* Article category tag */
+.bg-white.border-b.border-gray-200.py-8 .text-xs.font-semibold.text-red-600 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-gray);
+  margin-bottom: 0.5rem;
+}
+
+/* Article title */
+.bg-white.border-b.border-gray-200.py-8 h1 {
+  font-family: 'Libre Baskerville', 'Times New Roman', serif;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--ink-black);
+  line-height: 1.25;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+/* Article byline and date */
+.bg-white.border-b.border-gray-200.py-8 .flex.items-center {
+  margin-top: 1rem;
+}
+
+.bg-white.border-b.border-gray-200.py-8 .font-semibold {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-black);
+}
+
+.bg-white.border-b.border-gray-200.py-8 .text-sm.text-gray-500 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.8rem;
+  color: var(--text-gray);
+  margin-top: 0.25rem;
+}
+
+/* Article body content */
+.prose {
+  font-family: 'Crimson Text', 'Georgia', serif;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: #333333;
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  font-family: 'Libre Baskerville', serif;
+  font-weight: 700;
+  color: var(--ink-black);
+  margin-top: 1.75rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.prose p {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.prose strong, .prose b {
+  font-weight: 700;
+  color: var(--ink-black);
+}
+
+.prose em, .prose i {
+  font-style: italic;
+}
+
+/* Author bio box */
+.bg-gray-50.border.border-gray-200.rounded-lg.p-6 {
+  background-color: #F9F9F9;
+  border: 1px solid var(--medium-gray);
+  border-radius: 3px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.bg-gray-50.border.border-gray-200.rounded-lg.p-6 h3 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-black);
+  margin-bottom: 0.25rem;
+}
+
+.bg-gray-50.border.border-gray-200.rounded-lg.p-6 p {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-gray);
+}
+
+.bg-gray-50.border.border-gray-200.rounded-lg.p-6 .w-12.h-12 {
+  width: 48px;
+  height: 48px;
+  background-color: var(--harvard-crimson);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   COMMENTS SECTION
+   ============================================ */
+
+/* Comments heading */
+.mb-8 h2 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink-black);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border-gray);
+}
+
+/* Comment input area */
+.bg-gray-50.border.border-gray-200.rounded-lg.p-4.mb-6 {
+  background-color: #FAFAFA;
+  border: 1px solid var(--medium-gray);
+  border-radius: 3px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Individual comment threads */
+.border.border-gray-200.rounded-lg.p-4 {
+  border: 1px solid var(--medium-gray);
+  border-radius: 3px;
+  background-color: #FFFFFF;
+  padding: 1rem;
+}
+
+.border.border-gray-200.rounded-lg.p-4.mb-4 {
+  margin-bottom: 1rem;
+}
+
+/* Comment author name */
+.font-semibold.text-gray-900 {
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  color: var(--ink-black);
+  font-size: 0.9rem;
+}
+
+/* Comment text */
+.text-gray-700 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #444444;
+}
+
+/* Comment reply section */
+.ml-8.bg-gray-50 {
+  margin-left: 2.5rem;
+  background-color: #F5F5F5;
+  border: 1px solid var(--medium-gray);
+  border-radius: 3px;
+  padding: 0.875rem;
+}
+
+/* Comment metadata */
+.text-xs.text-gray-500 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.75rem;
+  color: #888888;
+}
+
+.bg-gray-50.border.border-gray-200 {
+  background-color: var(--light-gray);
+  border: 1px solid var(--border-gray);
+}
+
+/* ============================================
+   DASHBOARDS
+   ============================================ */
+.text-3xl.font-bold {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ink-black);
+}
+
+.text-2xl.font-bold {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--ink-black);
+}
+
+/* ============================================
+   FORMS & INPUTS
+   ============================================ */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  font-family: 'Open Sans', sans-serif;
+  border: 1px solid var(--border-gray);
+  border-radius: 2px;
+  padding: 0.625rem 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--harvard-crimson);
+  box-shadow: 0 0 0 3px rgba(165, 28, 48, 0.1);
+}
+
+/* ============================================
+   STATUS BADGES
+   ============================================ */
+.bg-green-100 {
+  background-color: #D1FAE5 !important;
+}
+
+.text-green-800 {
+  color: #065F46 !important;
+}
+
+.bg-yellow-100 {
+  background-color: #FEF3C7 !important;
+}
+
+.text-yellow-800 {
+  color: #92400E !important;
+}
+
+.bg-red-100 {
+  background-color: #FEE2E2 !important;
+}
+
+.text-red-800 {
+  color: var(--crimson-dark) !important;
+}
+
+/* ============================================
+   UTILITY OVERRIDES
+   ============================================ */
+.bg-gray-900 {
+  background-color: var(--ink-black) !important;
+}
+
+.text-gray-900 {
+  color: var(--ink-black) !important;
+}
+
+.text-gray-600 {
+  color: var(--text-gray) !important;
+}
+
+.text-gray-500 {
+  color: #6B6B6B !important;
+}
+
+.bg-gray-50 {
+  background-color: var(--light-gray) !important;
+}
+
+.border-gray-200 {
+  border-color: var(--border-gray) !important;
+}
+
+.border-gray-300 {
+  border-color: #CCCCCC !important;
+}
+
+/* ============================================
+   RICH TEXT EDITOR
+   ============================================ */
+.border.border-gray-300.rounded .border-b.border-gray-300.p-2.bg-gray-50 {
+  background-color: var(--light-gray);
+  border-bottom: 1px solid var(--border-gray);
+}
+
+.border.border-gray-300.rounded .border-b.border-gray-300.p-2.bg-gray-50 button {
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  border: 1px solid var(--border-gray);
+  background-color: #FFFFFF;
+}
+
+.border.border-gray-300.rounded .border-b.border-gray-300.p-2.bg-gray-50 button:hover {
+  background-color: var(--light-gray);
+  border-color: var(--harvard-crimson);
+}
+
+/* ============================================
+   MOBILE MENU
+   ============================================ */
+.md\:hidden.bg-gray-50 {
+  background-color: #FFFFFF;
+  border-top: 1px solid var(--border-gray);
+}
+
+/* ============================================
+   LOGIN PAGE
+   ============================================ */
+.bg-gradient-to-br {
+  background: linear-gradient(135deg, #FAF9F8 0%, #FFFFFF 100%);
+}
+
+.shadow-lg {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   MODAL OVERLAYS
+   ============================================ */
+.fixed.inset-0.bg-black.bg-opacity-50 {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   ANALYTICS CARDS
+   ============================================ */
+.text-3xl.font-bold.text-gray-900 {
+  font-family: 'Libre Baskerville', serif;
+  font-weight: 700;
+  color: var(--harvard-crimson);
+}
+
+/* ============================================
+   RESPONSIVE TYPOGRAPHY
+   ============================================ */
+@media (max-width: 768px) {
+  body {
+    font-size: 16px;
+  }
+  
+  .bg-white.border-b.border-gray-200.py-8 h1 {
+    font-size: 1.75rem;
+  }
+  
+  header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .prose {
+    font-size: 1rem;
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* ============================================
+   SIDEBAR & RELATED CONTENT STYLES
+   ============================================ */
+
+/* If you want to add a sidebar like Crimson has */
+.article-sidebar {
+  background-color: #FAFAFA;
+  border-left: 1px solid var(--border-gray);
+  padding: 1.5rem;
 }
 
-.App-link {
-  color: #61dafb;
+.article-sidebar h3 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-black);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--harvard-crimson);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.article-sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.article-sidebar li {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--medium-gray);
+}
+
+.article-sidebar a {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-black);
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.article-sidebar a:hover {
+  color: var(--harvard-crimson);
+}
+
+/* ============================================
+   ADDITIONAL ARTICLE PAGE REFINEMENTS
+   ============================================ */
+
+/* Back button styling */
+.text-red-600.hover\:text-red-700 {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--harvard-crimson);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.text-red-600.hover\:text-red-700:hover {
+  color: var(--crimson-dark);
+}
+
+/* Article container padding adjustments */
+.max-w-4xl.mx-auto.px-4.py-8 {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
 }
