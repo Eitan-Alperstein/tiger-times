@@ -90,6 +90,184 @@ const filterBadWords = (text) => {
   return filtered;
 };
 
+// ============ WIDGET COMPONENTS ============
+const WeatherWidget = () => {
+  const [weather, setWeather] = useState(null);
+  
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&current_weather=true&temperature_unit=fahrenheit')
+      .then(res => res.json())
+      .then(data => setWeather(data.current_weather))
+      .catch(() => setWeather({temperature: 72, weathercode: 0}));
+  }, []);
+  
+  return (
+    <div className="col-span-full bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold text-blue-800 mb-2">Weather - New York</h3>
+      <div className="flex items-center gap-4">
+        <div className="text-3xl">{weather?.weathercode === 0 ? '☀️' : weather?.weathercode < 3 ? '⛅' : '🌧️'}</div>
+        <div>
+          <div className="text-xl font-bold">{weather?.temperature || 72}°F</div>
+          <div className="text-sm text-gray-600">{weather?.weathercode === 0 ? 'Clear' : weather?.weathercode < 3 ? 'Partly Cloudy' : 'Rainy'}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StocksWidget = () => {
+  const [stocks, setStocks] = useState([]);
+  
+  useEffect(() => {
+    const mockStocks = [
+      {symbol: 'AAPL', change: '+2.1%', color: 'text-green-600'},
+      {symbol: 'GOOGL', change: '+1.8%', color: 'text-green-600'},
+      {symbol: 'TSLA', change: '-0.5%', color: 'text-red-600'},
+      {symbol: 'MSFT', change: '+0.9%', color: 'text-green-600'},
+      {symbol: 'AMZN', change: '+1.2%', color: 'text-green-600'},
+      {symbol: 'META', change: '-1.1%', color: 'text-red-600'},
+      {symbol: 'NFLX', change: '+3.4%', color: 'text-green-600'},
+      {symbol: 'NVDA', change: '+5.2%', color: 'text-green-600'},
+      {symbol: 'AMD', change: '-0.8%', color: 'text-red-600'},
+      {symbol: 'INTC', change: '+0.3%', color: 'text-green-600'},
+      {symbol: 'CRM', change: '+2.7%', color: 'text-green-600'},
+      {symbol: 'ORCL', change: '-0.2%', color: 'text-red-600'},
+      {symbol: 'IBM', change: '+1.5%', color: 'text-green-600'},
+      {symbol: 'ADBE', change: '+0.7%', color: 'text-green-600'},
+      {symbol: 'PYPL', change: '-2.1%', color: 'text-red-600'}
+    ];
+    setStocks(mockStocks);
+  }, []);
+  
+  return (
+    <div className="col-span-full bg-green-50 border border-green-200 rounded-lg p-4 overflow-hidden flex items-center">
+      <div className="relative w-full">
+        <div className="flex gap-6 text-sm whitespace-nowrap animate-marquee">
+          {stocks.concat(stocks).map((stock, i) => (
+            <span key={i}>{stock.symbol} <span className={stock.color}>{stock.change}</span></span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const QuoteWidget = () => {
+  const [quote, setQuote] = useState(null);
+  
+  useEffect(() => {
+    fetch('https://api.quotable.io/random')
+      .then(res => res.json())
+      .then(data => setQuote(data))
+      .catch(() => setQuote({content: 'The only way to do great work is to love what you do.', author: 'Steve Jobs'}));
+  }, []);
+  
+  return (
+    <div className="col-span-full bg-purple-50 border border-purple-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold text-purple-800 mb-2">Quote of the Day</h3>
+      {quote ? (
+        <>
+          <blockquote className="text-lg italic text-gray-700">"{quote.content}"</blockquote>
+          <cite className="text-sm text-gray-500 mt-2 block">— {quote.author}</cite>
+        </>
+      ) : (
+        <div className="text-gray-500 italic">Loading quote...</div>
+      )}
+    </div>
+  );
+};
+
+const WordWidget = () => {
+  const [word, setWord] = useState(null);
+  
+  useEffect(() => {
+    fetch('https://api.dictionaryapi.dev/api/v2/entries/en/serendipity')
+      .then(res => res.json())
+      .then(data => {
+        const entry = data[0];
+        setWord({
+          word: entry.word,
+          phonetic: entry.phonetic,
+          partOfSpeech: entry.meanings[0]?.partOfSpeech,
+          definition: entry.meanings[0]?.definitions[0]?.definition
+        });
+      })
+      .catch(() => setWord({
+        word: 'Serendipity',
+        partOfSpeech: 'noun',
+        definition: 'The occurrence of events by chance in a happy way.'
+      }));
+  }, []);
+  
+  return (
+    <div className="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold text-yellow-800 mb-2">Word of the Day</h3>
+      <div className="flex gap-4">
+        <div>
+          <div className="text-xl font-bold text-gray-900">{word?.word}</div>
+          <div className="text-sm text-gray-600 italic">{word?.partOfSpeech}</div>
+        </div>
+        <div className="text-sm text-gray-700">{word?.definition}</div>
+      </div>
+    </div>
+  );
+};
+
+const SportsWidget = () => {
+  const [scores, setScores] = useState([]);
+  
+  useEffect(() => {
+    const mockScores = [
+      { type: 'header', text: 'MLS' },
+      { type: 'game', home: 'LAFC', homeScore: '2', away: 'Galaxy', awayScore: '1', homeColor: '#000000', awayColor: '#005DAA' },
+      { type: 'game', home: 'Atlanta', homeScore: '1', away: 'Miami', awayScore: '0', homeColor: '#80001C', awayColor: '#F7B5CD' },
+      { type: 'game', home: 'Seattle', homeScore: '3', away: 'Portland', awayScore: '2', homeColor: '#5D9732', awayColor: '#004225' },
+      { type: 'header', text: 'MLB' },
+      { type: 'game', home: 'Yankees', homeScore: '7', away: 'Red Sox', awayScore: '4', homeColor: '#132448', awayColor: '#BD3039' },
+      { type: 'game', home: 'Dodgers', homeScore: '9', away: 'Padres', awayScore: '3', homeColor: '#005A9C', awayColor: '#2F241D' },
+      { type: 'game', home: 'Astros', homeScore: '8', away: 'Angels', awayScore: '5', homeColor: '#002D62', awayColor: '#BA0021' },
+      { type: 'header', text: 'NBA' },
+      { type: 'game', home: 'Lakers', homeScore: '108', away: 'Warriors', awayScore: '102', homeColor: '#552583', awayColor: '#1D428A' },
+      { type: 'game', home: 'Celtics', homeScore: '115', away: 'Heat', awayScore: '109', homeColor: '#007A33', awayColor: '#98002E' },
+      { type: 'game', home: 'Knicks', homeScore: '98', away: 'Nets', awayScore: '95', homeColor: '#006BB6', awayColor: '#000000' }
+    ];
+    setScores(mockScores);
+  }, []);
+  
+  return (
+    <div className="col-span-full bg-red-50 border border-red-200 rounded-lg p-4 overflow-hidden">
+      <h3 className="text-lg font-bold text-red-800 mb-2">Sports Ticker</h3>
+      <div className="relative">
+        <div className="flex gap-8 text-sm whitespace-nowrap animate-marquee">
+          {scores.concat(scores).map((item, i) => (
+            item.type === 'header' ? (
+              <span key={i} className="font-bold text-red-800 bg-red-200 px-2 py-1 rounded uppercase tracking-wide">
+                {item.text}
+              </span>
+            ) : (
+              <div key={i} className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg shadow-sm border">
+                <span className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full" style={{backgroundColor: item.homeColor}}></div>
+                  <span className="font-semibold">{item.home}</span>
+                </span>
+                <span className="flex items-center gap-1 font-bold">
+                  <span>{item.homeScore}</span>
+                  <span className="text-gray-400">-</span>
+                  <span>{item.awayScore}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold">{item.away}</span>
+                  <div className="w-3 h-3 rounded-full" style={{backgroundColor: item.awayColor}}></div>
+                </span>
+              </div>
+            )
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ============ RICH TEXT EDITOR ============
 const RichTextEditor = ({ value, onChange }) => {
   const editorRef = useRef(null);
@@ -386,25 +564,135 @@ const MobileCategoryNav = ({ setSearchTerm, setCurrentPage, setShowMobileMenu })
 };
 
 // ============ ARTICLE CARD COMPONENT ============
-const ArticleCard = ({ article, authorName, onRead }) => (
-  <div onClick={() => onRead(article)} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer">
-    <div className={`p-4 ${article.image ? 'flex gap-4' : ''}`}>
-      {article.image && (
-        <img 
-          src={article.image} 
-          alt={article.title}
-          className="w-24 h-16 object-cover rounded flex-shrink-0"
-        />
-      )}
-      <div className="flex-1">
-        <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">{article.category}</div>
-        <h3 className="text-xl font-bold text-gray-900 mt-1 line-clamp-2">{article.title}</h3>
-        <div className="text-sm text-gray-500 mt-2">By {authorName}</div>
-        <div className="text-xs text-gray-400 mt-1">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+const getCardSize = (article, index) => {
+  const now = new Date();
+  const articleDate = article.createdAt?.toDate?.() || new Date();
+  const hoursOld = (now - articleDate) / (1000 * 60 * 60);
+  const views = article.views || 0;
+  
+  // Disable hero cards - they look off
+  // if (index === 0 && views > 80) {
+  //   return 'hero';
+  // }
+  // Breaking news banner
+  if (article.category === 'News' && hoursOld < 2 && views > 40) {
+    return 'banner';
+  }
+  // Compact news list items (skip first few articles)
+  if (article.category === 'News' && index > 3 && index % 7 === 0) {
+    return 'compact';
+  }
+  // Wide feature
+  if (['Features', 'Arts'].includes(article.category) && views > 25) {
+    return 'wide';
+  }
+  // Tall spotlight
+  if (article.category === 'Opinion' && views > 15) {
+    return 'tall';
+  }
+  // Standard cards
+  if (hoursOld < 24 || views > 20) {
+    return 'medium';
+  }
+  // Fill gaps with tiny cards
+  if (index % 5 === 0) {
+    return 'tiny';
+  }
+  return 'small';
+};
+
+const ArticleCard = ({ article, authorName, onRead, index }) => {
+  const size = getCardSize(article, index);
+  const sizeClasses = {
+    hero: 'col-span-3 row-span-3',
+    banner: 'col-span-4 row-span-1',
+    wide: 'col-span-3 row-span-1',
+    tall: 'col-span-1 row-span-2',
+    compact: 'col-span-2 row-span-1',
+    medium: 'col-span-2 row-span-1', 
+    small: 'col-span-2 row-span-1',
+    tiny: 'col-span-1 row-span-1'
+  };
+  
+  if (size === 'hero') {
+    return (
+      <div onClick={() => onRead(article)} className={`bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer ${sizeClasses[size]}`}>
+        <div className="h-full flex flex-col">
+          {article.image && <img src={article.image} alt={article.title} className="w-full h-48 object-cover" />}
+          <div className="p-6 flex-1">
+            <div className="text-sm font-semibold text-red-600 uppercase tracking-wide">{article.category}</div>
+            <h3 className="text-2xl font-bold text-gray-900 mt-2 leading-tight line-clamp-4">{article.title}</h3>
+            <div className="text-base text-gray-600 mt-4">By {authorName}</div>
+            <div className="text-sm text-gray-400 mt-1">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (size === 'banner') {
+    return (
+      <div onClick={() => onRead(article)} className={`bg-red-600 text-white rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer ${sizeClasses[size]}`}>
+        <div className="p-4 flex items-center gap-4">
+          <div className="flex-1">
+            <div className="text-xs font-semibold uppercase tracking-wide opacity-90">BREAKING • {article.category}</div>
+            <h3 className="text-lg font-bold mt-1 line-clamp-2">{article.title}</h3>
+          </div>
+          {article.image && <img src={article.image} alt={article.title} className="w-16 h-16 object-cover rounded" />}
+        </div>
+      </div>
+    );
+  }
+  
+  if (size === 'compact') {
+    return (
+      <div onClick={() => onRead(article)} className={`bg-gray-50 border-l-4 border-red-600 hover:bg-gray-100 transition cursor-pointer ${sizeClasses[size]}`}>
+        <div className="p-3 flex items-center gap-3">
+          {article.image && <img src={article.image} alt={article.title} className="w-12 h-12 object-cover rounded" />}
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-gray-900 line-clamp-3">{article.title}</h3>
+            <div className="text-xs text-gray-500 mt-1">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  const imageClasses = {
+    wide: article.image ? 'flex gap-4' : '',
+    tall: article.image ? 'flex-col' : '',
+    medium: article.image ? 'flex gap-4' : '',
+    small: article.image ? 'flex gap-2' : '',
+    tiny: ''
+  };
+  const imgSizes = {
+    wide: 'w-32 h-full',
+    tall: 'w-full h-24',
+    medium: 'w-24 h-full', 
+    small: 'w-16 h-full',
+    tiny: ''
+  };
+  
+  return (
+    <div onClick={() => onRead(article)} className={`bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer ${sizeClasses[size]}`}>
+      <div className={`p-4 h-full ${imageClasses[size]} ${article.image && ['wide', 'medium', 'small'].includes(size) ? 'items-stretch' : ''}`}>
+        {article.image && size !== 'tiny' && (
+          <img 
+            src={article.image} 
+            alt={article.title}
+            className={`${imgSizes[size]} object-cover rounded flex-shrink-0`}
+          />
+        )}
+        <div className="flex-1">
+          <div className={`text-xs font-semibold text-red-600 uppercase tracking-wide ${size === 'tall' ? 'mt-2' : ''}`}>{article.category}</div>
+          <h3 className={`font-bold text-gray-900 mt-1 line-clamp-3 ${size === 'wide' ? 'text-lg' : size === 'tall' ? 'text-base' : size === 'medium' ? 'text-base' : size === 'tiny' ? 'text-xs' : 'text-base'}`}>{article.title}</h3>
+          {size !== 'tiny' && <div className="text-sm text-gray-500 mt-2">By {authorName}</div>}
+          <div className="text-xs text-gray-400 mt-1">{new Date(article.createdAt?.toDate?.()).toLocaleDateString()}</div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ============ SEARCH PAGE ============
 const SearchPage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm }) => {
@@ -478,12 +766,13 @@ const SearchPage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTe
       ) : (
         <div>
           <p className="text-gray-600 mb-6">{filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''} found</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map(article => (
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4" style={{gridAutoRows: 'minmax(120px, max-content)'}}>
+            {filteredArticles.map((article, index) => (
               <ArticleCard
                 key={article.id}
                 article={article}
                 authorName={authorNames[article.authorId] || 'Unknown'}
+                index={index}
                 onRead={(article) => {
                   setCurrentArticle(article);
                   setCurrentPage('article');
@@ -556,19 +845,51 @@ const HomePage = ({ setCurrentPage, setCurrentArticle, searchTerm, setSearchTerm
             <p className="text-gray-500 text-lg">No articles found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map(article => (
-              <ArticleCard
-                key={article.id}
-                article={article}
-                authorName={authorNames[article.authorId] || 'Unknown'}
-                onRead={(article) => {
-                  setCurrentArticle(article);
-                  setCurrentPage('article');
-                  window.history.pushState({}, '', `?article=${article.id}`);
-                }}
-              />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4" style={{gridAutoRows: 'minmax(120px, max-content)'}}>
+            {filteredArticles.map((article, index) => {
+              const widgets = [];
+              
+              if (index > 0 && index % 5 === 0) {
+                const widgetType = Math.floor(index / 5) % 5;
+                
+                if (widgetType === 0) {
+                  widgets.push(
+                    <WeatherWidget key={`weather-${index}`} />
+                  );
+                } else if (widgetType === 1) {
+                  widgets.push(
+                    <StocksWidget key={`stocks-${index}`} />
+                  );
+                } else if (widgetType === 2) {
+                  widgets.push(
+                    <QuoteWidget key={`quote-${index}`} />
+                  );
+                } else if (widgetType === 3) {
+                  widgets.push(
+                    <WordWidget key={`word-${index}`} />
+                  );
+                } else {
+                  widgets.push(
+                    <SportsWidget key={`sports-${index}`} />
+                  );
+                }
+              }
+              
+              return [
+                ...widgets,
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  authorName={authorNames[article.authorId] || 'Unknown'}
+                  index={index}
+                  onRead={(article) => {
+                    setCurrentArticle(article);
+                    setCurrentPage('article');
+                    window.history.pushState({}, '', `?article=${article.id}`);
+                  }}
+                />
+              ];
+            }).flat()}
           </div>
         )}
       </div>
@@ -1159,6 +1480,62 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
     }
   };
 
+  const createTestArticles = async () => {
+    const categories = ['News', 'Sports', 'Opinion', 'Features', 'Arts'];
+    const titles = [
+      'Breaking: Major Development in City Council',
+      'Local Team Wins Championship Game',
+      'Opinion: The Future of Education',
+      'New Restaurant Opens Downtown',
+      'Art Gallery Features Local Artists',
+      'Weather Alert: Storm Approaching',
+      'Sports Update: Season Highlights',
+      'Community Event This Weekend',
+      'Technology News: Latest Updates',
+      'Health Tips for Winter Season'
+    ];
+    
+    try {
+      for (let i = 0; i < 20; i++) {
+        const randomHours = Math.floor(Math.random() * 72);
+        const createdAt = new Date(Date.now() - randomHours * 60 * 60 * 1000);
+        
+        await addDoc(collection(db, 'articles'), {
+          title: titles[Math.floor(Math.random() * titles.length)] + ` ${i + 1}`,
+          content: '<p>This is a test article content for demonstration purposes.</p>',
+          category: categories[Math.floor(Math.random() * categories.length)],
+          image: `https://picsum.photos/300/200?random=${i}`,
+          authorId: currentUser.id,
+          status: 'published',
+          views: Math.floor(Math.random() * 100),
+          createdAt: createdAt,
+          isTestData: true
+        });
+      }
+      alert('20 test articles created!');
+      await fetchData();
+    } catch (error) {
+      console.error('Error creating test articles:', error);
+    }
+  };
+
+  const deleteTestArticles = async () => {
+    try {
+      const articlesRef = collection(db, 'articles');
+      const q = query(articlesRef, where('isTestData', '==', true));
+      const articlesSnap = await getDocs(q);
+      
+      for (const doc of articlesSnap.docs) {
+        await deleteDoc(doc.ref);
+      }
+      
+      alert('Test articles deleted!');
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting test articles:', error);
+    }
+  };
+
   if (loading) {
     return <div className="max-w-6xl mx-auto px-4 py-8"><p>Loading...</p></div>;
   }
@@ -1268,7 +1645,7 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
       {section === 'analytics' && (
         <div>
           <h2 className="text-2xl font-bold mb-4">Analytics Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="text-gray-600 text-sm font-medium">Published Articles</div>
               <div className="text-3xl font-bold text-gray-900 mt-2">{stats.totalArticles}</div>
@@ -1276,6 +1653,17 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="text-gray-600 text-sm font-medium">Total Views</div>
               <div className="text-3xl font-bold text-gray-900 mt-2">{stats.totalViews}</div>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 className="text-lg font-bold mb-4">Test Data</h3>
+            <div className="flex gap-2">
+              <button onClick={createTestArticles} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium" type="button">
+                Create 20 Test Articles
+              </button>
+              <button onClick={deleteTestArticles} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium" type="button">
+                Delete Test Articles
+              </button>
             </div>
           </div>
         </div>
