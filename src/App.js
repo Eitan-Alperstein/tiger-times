@@ -90,6 +90,391 @@ const filterBadWords = (text) => {
   return filtered;
 };
 
+// ============ CHART COMPONENTS ============
+const TopArticlesChart = () => {
+  const [topArticles, setTopArticles] = useState([]);
+  
+  useEffect(() => {
+    const fetchTopArticles = async () => {
+      try {
+        const articlesRef = collection(db, 'articles');
+        const q = query(articlesRef, where('status', '==', 'published'));
+        const articlesSnap = await getDocs(q);
+        const articles = articlesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(a => (a.views || 0) > 0)
+          .sort((a, b) => (b.views || 0) - (a.views || 0))
+          .slice(0, 10);
+        console.log('Top articles:', articles);
+        setTopArticles(articles);
+      } catch (error) {
+        console.error('Error fetching top articles:', error);
+      }
+    };
+    fetchTopArticles();
+  }, []);
+  
+  const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f59e0b'];
+  const maxViews = Math.max(...topArticles.map(a => a.views || 0), 1);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold mb-4">Top Articles by Views</h3>
+      <div className="space-y-3">
+        {topArticles.map((article, i) => (
+          <div key={article.id} className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              {article.image && (
+                <img src={article.image} alt={article.title} className="w-8 h-8 object-cover rounded" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{article.title}</div>
+                <div className="text-xs text-gray-500">{article.views || 0} views</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-32">
+              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                <div 
+                  className="h-2 rounded-full" 
+                  style={{
+                    backgroundColor: colors[i],
+                    width: `${((article.views || 0) / maxViews) * 100}%`
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CategoryViewsChart = () => {
+  const [categoryData, setCategoryData] = useState([]);
+  
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      try {
+        const articlesRef = collection(db, 'articles');
+        const q = query(articlesRef, where('status', '==', 'published'));
+        const articlesSnap = await getDocs(q);
+        const articles = articlesSnap.docs.map(d => d.data());
+        
+        const categoryViews = {};
+        articles.forEach(article => {
+          const category = article.category || 'Other';
+          categoryViews[category] = (categoryViews[category] || 0) + (article.views || 0);
+        });
+        
+        const sortedCategories = Object.entries(categoryViews)
+          .sort(([,a], [,b]) => b - a)
+          .map(([category, views]) => ({ category, views }));
+        
+        setCategoryData(sortedCategories);
+      } catch (error) {
+        console.error('Error fetching category data:', error);
+      }
+    };
+    fetchCategoryData();
+  }, []);
+  
+  const colors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb'];
+  const maxViews = Math.max(...categoryData.map(c => c.views), 1);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold mb-4">Views by Category</h3>
+      <div className="space-y-3">
+        {categoryData.map((item, i) => (
+          <div key={item.category} className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <div 
+                className="w-4 h-4 rounded" 
+                style={{ backgroundColor: colors[i % colors.length] }}
+              />
+              <div className="font-medium">{item.category}</div>
+            </div>
+            <div className="flex items-center gap-2 w-32">
+              <div className="flex-1 bg-gray-200 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full" 
+                  style={{
+                    backgroundColor: colors[i % colors.length],
+                    width: `${(item.views / maxViews) * 100}%`
+                  }}
+                />
+              </div>
+              <div className="text-sm font-medium w-12 text-right">{item.views}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const WriterPerformanceChart = () => {
+  const [writerData, setWriterData] = useState([]);
+  
+  useEffect(() => {
+    const fetchWriterData = async () => {
+      try {
+        const articlesRef = collection(db, 'articles');
+        const q = query(articlesRef, where('status', '==', 'published'));
+        const articlesSnap = await getDocs(q);
+        const articles = articlesSnap.docs.map(d => d.data());
+        
+        const writerStats = {};
+        for (const article of articles) {
+          const authorId = article.authorId;
+          if (!writerStats[authorId]) {
+            const userDoc = await getDoc(doc(db, 'users', authorId));
+            writerStats[authorId] = {
+              name: userDoc.exists() ? userDoc.data().name : 'Unknown',
+              articles: 0,
+              totalViews: 0
+            };
+          }
+          writerStats[authorId].articles++;
+          writerStats[authorId].totalViews += article.views || 0;
+        }
+        
+        const sortedWriters = Object.values(writerStats)
+          .sort((a, b) => b.totalViews - a.totalViews)
+          .slice(0, 5);
+        
+        setWriterData(sortedWriters);
+      } catch (error) {
+        console.error('Error fetching writer data:', error);
+      }
+    };
+    fetchWriterData();
+  }, []);
+  
+  const colors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb'];
+  const maxViews = Math.max(...writerData.map(w => w.totalViews), 1);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold mb-4">Top Writers by Views</h3>
+      <div className="space-y-3">
+        {writerData.map((writer, i) => (
+          <div key={writer.name} className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold">
+                {writer.name[0]}
+              </div>
+              <div>
+                <div className="font-medium">{writer.name}</div>
+                <div className="text-xs text-gray-500">{writer.articles} articles</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-32">
+              <div className="flex-1 bg-gray-200 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full" 
+                  style={{
+                    backgroundColor: colors[i],
+                    width: `${(writer.totalViews / maxViews) * 100}%`
+                  }}
+                />
+              </div>
+              <div className="text-sm font-medium w-12 text-right">{writer.totalViews}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PublishingTimelineChart = () => {
+  const [timelineData, setTimelineData] = useState([]);
+  
+  useEffect(() => {
+    const fetchTimelineData = async () => {
+      try {
+        const articlesRef = collection(db, 'articles');
+        const q = query(articlesRef, where('status', '==', 'published'));
+        const articlesSnap = await getDocs(q);
+        const articles = articlesSnap.docs.map(d => d.data());
+        
+        const dailyCount = {};
+        articles.forEach(article => {
+          const date = article.createdAt?.toDate?.()?.toDateString() || 'Unknown';
+          dailyCount[date] = (dailyCount[date] || 0) + 1;
+        });
+        
+        const sortedDates = Object.entries(dailyCount)
+          .sort(([a], [b]) => new Date(a) - new Date(b))
+          .slice(-7)
+          .map(([date, count]) => ({ date: new Date(date).toLocaleDateString(), count }));
+        
+        setTimelineData(sortedDates);
+      } catch (error) {
+        console.error('Error fetching timeline data:', error);
+      }
+    };
+    fetchTimelineData();
+  }, []);
+  
+  const maxCount = Math.max(...timelineData.map(d => d.count), 1);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold mb-4">Publishing Timeline (Last 7 Days)</h3>
+      <div className="space-y-2">
+        {timelineData.map((day, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="w-20 text-xs text-gray-600">{day.date}</div>
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div 
+                className="h-2 rounded-full bg-blue-500" 
+                style={{ width: `${(day.count / maxCount) * 100}%` }}
+              />
+            </div>
+            <div className="text-sm font-medium w-8 text-right">{day.count}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CommentEngagementChart = () => {
+  const [engagementData, setEngagementData] = useState([]);
+  
+  useEffect(() => {
+    const fetchEngagementData = async () => {
+      try {
+        const articlesRef = collection(db, 'articles');
+        const q = query(articlesRef, where('status', '==', 'published'));
+        const articlesSnap = await getDocs(q);
+        
+        const articleEngagement = [];
+        for (const articleDoc of articlesSnap.docs) {
+          const article = articleDoc.data();
+          const commentsRef = collection(db, 'articles', articleDoc.id, 'comments');
+          const commentsSnap = await getDocs(commentsRef);
+          
+          articleEngagement.push({
+            title: article.title,
+            comments: commentsSnap.size,
+            views: article.views || 0
+          });
+        }
+        
+        const topEngagement = articleEngagement
+          .sort((a, b) => b.comments - a.comments)
+          .slice(0, 5);
+        
+        setEngagementData(topEngagement);
+      } catch (error) {
+        console.error('Error fetching engagement data:', error);
+      }
+    };
+    fetchEngagementData();
+  }, []);
+  
+  const maxComments = Math.max(...engagementData.map(a => a.comments), 1);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold mb-4">Most Commented Articles</h3>
+      <div className="space-y-3">
+        {engagementData.map((article, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{article.title}</div>
+              <div className="text-xs text-gray-500">{article.views} views</div>
+            </div>
+            <div className="flex items-center gap-2 w-24">
+              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                <div 
+                  className="h-2 rounded-full bg-purple-500" 
+                  style={{ width: `${(article.comments / maxComments) * 100}%` }}
+                />
+              </div>
+              <div className="text-sm font-medium w-8 text-right">{article.comments}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CategoryAverageChart = () => {
+  const [avgData, setAvgData] = useState([]);
+  
+  useEffect(() => {
+    const fetchAvgData = async () => {
+      try {
+        const articlesRef = collection(db, 'articles');
+        const q = query(articlesRef, where('status', '==', 'published'));
+        const articlesSnap = await getDocs(q);
+        const articles = articlesSnap.docs.map(d => d.data());
+        
+        const categoryStats = {};
+        articles.forEach(article => {
+          const category = article.category || 'Other';
+          if (!categoryStats[category]) {
+            categoryStats[category] = { totalViews: 0, count: 0 };
+          }
+          categoryStats[category].totalViews += article.views || 0;
+          categoryStats[category].count++;
+        });
+        
+        const avgByCategory = Object.entries(categoryStats)
+          .map(([category, stats]) => ({
+            category,
+            avgViews: Math.round(stats.totalViews / stats.count)
+          }))
+          .sort((a, b) => b.avgViews - a.avgViews);
+        
+        setAvgData(avgByCategory);
+      } catch (error) {
+        console.error('Error fetching average data:', error);
+      }
+    };
+    fetchAvgData();
+  }, []);
+  
+  const colors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb'];
+  const maxAvg = Math.max(...avgData.map(c => c.avgViews), 1);
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-lg font-bold mb-4">Average Views by Category</h3>
+      <div className="space-y-3">
+        {avgData.map((item, i) => (
+          <div key={item.category} className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <div 
+                className="w-4 h-4 rounded" 
+                style={{ backgroundColor: colors[i % colors.length] }}
+              />
+              <div className="font-medium">{item.category}</div>
+            </div>
+            <div className="flex items-center gap-2 w-32">
+              <div className="flex-1 bg-gray-200 rounded-full h-3">
+                <div 
+                  className="h-3 rounded-full" 
+                  style={{
+                    backgroundColor: colors[i % colors.length],
+                    width: `${(item.avgViews / maxAvg) * 100}%`
+                  }}
+                />
+              </div>
+              <div className="text-sm font-medium w-12 text-right">{item.avgViews}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ============ WIDGET COMPONENTS ============
 const WeatherWidget = () => {
   const [weather, setWeather] = useState(null);
@@ -1655,6 +2040,24 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
               <div className="text-3xl font-bold text-gray-900 mt-2">{stats.totalViews}</div>
             </div>
           </div>
+          
+          <div className="mb-6">
+            <TopArticlesChart />
+          </div>
+          <div className="mb-6">
+            <CategoryViewsChart />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <WriterPerformanceChart />
+            <PublishingTimelineChart />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <CommentEngagementChart />
+            <CategoryAverageChart />
+          </div>
+          
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <h3 className="text-lg font-bold mb-4">Test Data</h3>
             <div className="flex gap-2">
