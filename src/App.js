@@ -32,6 +32,16 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 200) => {
       canvas.width = img.width * ratio;
       canvas.height = img.height * ratio;
       
+      // If it's a square crop for profile images, make it circular
+      if (maxWidth === maxHeight) {
+        const size = Math.min(canvas.width, canvas.height);
+        canvas.width = size;
+        canvas.height = size;
+        ctx.beginPath();
+        ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+        ctx.clip();
+      }
+      
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
@@ -230,8 +240,10 @@ const WriterPerformanceChart = () => {
           const authorId = article.authorId;
           if (!writerStats[authorId]) {
             const userDoc = await getDoc(doc(db, 'users', authorId));
+            const userData = userDoc.exists() ? userDoc.data() : {};
             writerStats[authorId] = {
-              name: userDoc.exists() ? userDoc.data().name : 'Unknown',
+              name: userData.name || 'Unknown',
+              profileImage: userData.profileImage,
               articles: 0,
               totalViews: 0
             };
@@ -262,9 +274,13 @@ const WriterPerformanceChart = () => {
         {writerData.map((writer, i) => (
           <div key={writer.name} className="flex items-center gap-3">
             <div className="flex items-center gap-2 flex-1">
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold">
-                {writer.name[0]}
-              </div>
+              {writer.profileImage ? (
+                <img src={writer.profileImage} alt={writer.name} className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold">
+                  {writer.name[0]}
+                </div>
+              )}
               <div>
                 <div className="font-medium">{writer.name}</div>
                 <div className="text-xs text-gray-500">{writer.articles} articles</div>
@@ -1431,8 +1447,9 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', article.authorId));
       if (userDoc.exists()) {
-        setAuthorName(userDoc.data().name);
-        setAuthorBio(userDoc.data().bio);
+        const userData = userDoc.data();
+        setAuthorName(userData.name);
+        setAuthorBio(userData);
       }
     } catch (error) {
       console.error('Error fetching author:', error);
@@ -1530,10 +1547,14 @@ const ArticlePage = ({ article, setCurrentPage, currentUser }) => {
 
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">{authorName[0]}</div>
+            {authorBio && authorBio.profileImage ? (
+              <img src={authorBio.profileImage} alt={authorName} className="w-12 h-12 rounded-full object-cover" />
+            ) : (
+              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">{authorName[0]}</div>
+            )}
             <div>
               <h3 className="font-semibold text-gray-900">{authorName}</h3>
-              <p className="text-sm text-gray-600">{authorBio}</p>
+              <p className="text-sm text-gray-600">{typeof authorBio === 'string' ? authorBio : authorBio?.bio}</p>
             </div>
           </div>
         </div>
@@ -1586,9 +1607,15 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [showImageSearch, setShowImageSearch] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState({ bio: '', profileImage: '' });
+  const [profileImageSearch, setProfileImageSearch] = useState('');
+  const [profileSearchResults, setProfileSearchResults] = useState([]);
+  const [showProfileImageSearch, setShowProfileImageSearch] = useState(false);
 
   useEffect(() => {
     fetchArticles();
+    setProfileData({ bio: currentUser.bio || '', profileImage: currentUser.profileImage || '' });
   }, [currentUser]);
 
   const fetchArticles = async () => {
@@ -1662,6 +1689,24 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
     }
   };
 
+  const handleProfileSave = async () => {
+    if (profileData.bio.length > 1000) {
+      alert('Bio must be under 1000 characters');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'users', currentUser.id), {
+        bio: profileData.bio,
+        profileImage: profileData.profileImage
+      });
+      alert('Profile updated successfully!');
+      setShowProfile(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile');
+    }
+  };
+
   if (loading) {
     return <div className="max-w-6xl mx-auto px-4 py-8"><p>Loading...</p></div>;
   }
@@ -1670,9 +1715,14 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Writer Dashboard</h1>
-        <button onClick={handleNew} className="bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 flex items-center gap-2" type="button">
-          <Plus size={20} /> New Article
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowProfile(true)} className="bg-blue-600 text-white px-4 py-2 rounded font-medium hover:bg-blue-700 flex items-center gap-2" type="button">
+            <Users size={20} /> Edit Profile
+          </button>
+          <button onClick={handleNew} className="bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 flex items-center gap-2" type="button">
+            <Plus size={20} /> New Article
+          </button>
+        </div>
       </div>
 
       {editingId && (
@@ -1828,6 +1878,125 @@ const WriterDashboard = ({ currentUser, setCurrentPage }) => {
           </div>
         ))}
       </div>
+
+      {showProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Edit Profile</h2>
+                <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-700" type="button">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Profile Image</label>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const base64 = await resizeImage(file, 200, 200);
+                            setProfileData({...profileData, profileImage: base64});
+                          }
+                        }}
+                        className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileImageSearch(!showProfileImageSearch)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                      >
+                        Search Images
+                      </button>
+                    </div>
+                    
+                    {showProfileImageSearch && (
+                      <div className="border border-gray-300 rounded p-4">
+                        <div className="flex gap-2 mb-4">
+                          <input
+                            type="text"
+                            placeholder="Search for images..."
+                            value={profileImageSearch}
+                            onChange={(e) => setProfileImageSearch(e.target.value)}
+                            className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const results = await searchUnsplashImages(profileImageSearch);
+                              setProfileSearchResults(results);
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                          >
+                            Search
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                          {profileSearchResults.map((img, idx) => (
+                            <img
+                              key={idx}
+                              src={img.urls?.small}
+                              alt={img.alt_description}
+                              className="w-full h-24 object-cover cursor-pointer border border-gray-300 rounded hover:border-red-600"
+                              onClick={async () => {
+                                const base64 = await convertImageToBase64(img.urls?.regular);
+                                if (base64) {
+                                  setProfileData({...profileData, profileImage: base64});
+                                  setShowProfileImageSearch(false);
+                                }
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {profileData.profileImage && (
+                      <div className="mt-2">
+                        <img src={profileData.profileImage} alt="Profile" className="w-20 h-20 object-cover border border-gray-300 rounded-full" />
+                        <button
+                          type="button"
+                          onClick={() => setProfileData({...profileData, profileImage: ''})}
+                          className="ml-2 text-red-600 hover:text-red-700 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio ({profileData.bio.length}/1000)</label>
+                  <textarea
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                    placeholder="Tell readers about yourself..."
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600 resize-none"
+                    rows="4"
+                    maxLength="1000"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 mt-6">
+                <button onClick={handleProfileSave} className="bg-red-600 text-white px-6 py-2 rounded font-medium hover:bg-red-700" type="button">
+                  Save Profile
+                </button>
+                <button onClick={() => setShowProfile(false)} className="bg-gray-300 text-gray-900 px-6 py-2 rounded font-medium hover:bg-gray-400" type="button">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1845,10 +2014,16 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
   const [previewArticle, setPreviewArticle] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState({ bio: '', profileImage: '' });
+  const [profileImageSearch, setProfileImageSearch] = useState('');
+  const [profileSearchResults, setProfileSearchResults] = useState([]);
+  const [showProfileImageSearch, setShowProfileImageSearch] = useState(false);
 
   useEffect(() => {
     fetchData();
-  }, []);
+    setProfileData({ bio: currentUser.bio || '', profileImage: currentUser.profileImage || '' });
+  }, [currentUser]);
 
   const fetchData = async () => {
     try {
@@ -1925,18 +2100,23 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
       return;
     }
     try {
-      const usersRef = collection(db, 'users');
-      await addDoc(usersRef, {
+      // Generate a unique ID for the new user
+      const newUserId = `writer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const userRef = doc(db, 'users', newUserId);
+      await setDoc(userRef, {
         email: newWriterEmail,
         name: newWriterName,
         role: 'writer',
-        bio: 'Staff Writer'
+        bio: 'Staff Writer',
+        createdAt: new Date(),
+        createdBy: currentUser.id
       });
       setNewWriterEmail('');
       setNewWriterName('');
       await fetchData();
     } catch (error) {
       console.error('Error adding writer:', error);
+      alert('Failed to add writer. Please check your permissions.');
     }
   };
 
@@ -2015,13 +2195,36 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
     }
   };
 
+  const handleProfileSave = async () => {
+    if (profileData.bio.length > 1000) {
+      alert('Bio must be under 1000 characters');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'users', currentUser.id), {
+        bio: profileData.bio,
+        profileImage: profileData.profileImage
+      });
+      alert('Profile updated successfully!');
+      setShowProfile(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile');
+    }
+  };
+
   if (loading) {
     return <div className="max-w-6xl mx-auto px-4 py-8"><p>Loading...</p></div>;
   }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <button onClick={() => setShowProfile(true)} className="bg-blue-600 text-white px-4 py-2 rounded font-medium hover:bg-blue-700 flex items-center gap-2" type="button">
+          <Users size={20} /> Edit Profile
+        </button>
+      </div>
 
       <div className="flex gap-4 mb-8 border-b border-gray-200">
         <button
@@ -2232,6 +2435,125 @@ const AdminDashboard = ({ currentUser, setCurrentPage }) => {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Edit Profile</h2>
+                <button onClick={() => setShowProfile(false)} className="text-gray-500 hover:text-gray-700" type="button">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Profile Image</label>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const base64 = await resizeImage(file, 200, 200);
+                            setProfileData({...profileData, profileImage: base64});
+                          }
+                        }}
+                        className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileImageSearch(!showProfileImageSearch)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                      >
+                        Search Images
+                      </button>
+                    </div>
+                    
+                    {showProfileImageSearch && (
+                      <div className="border border-gray-300 rounded p-4">
+                        <div className="flex gap-2 mb-4">
+                          <input
+                            type="text"
+                            placeholder="Search for images..."
+                            value={profileImageSearch}
+                            onChange={(e) => setProfileImageSearch(e.target.value)}
+                            className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const results = await searchUnsplashImages(profileImageSearch);
+                              setProfileSearchResults(results);
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                          >
+                            Search
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                          {profileSearchResults.map((img, idx) => (
+                            <img
+                              key={idx}
+                              src={img.urls?.small}
+                              alt={img.alt_description}
+                              className="w-full h-24 object-cover cursor-pointer border border-gray-300 rounded hover:border-red-600"
+                              onClick={async () => {
+                                const base64 = await convertImageToBase64(img.urls?.regular);
+                                if (base64) {
+                                  setProfileData({...profileData, profileImage: base64});
+                                  setShowProfileImageSearch(false);
+                                }
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {profileData.profileImage && (
+                      <div className="mt-2">
+                        <img src={profileData.profileImage} alt="Profile" className="w-20 h-20 object-cover border border-gray-300 rounded-full" />
+                        <button
+                          type="button"
+                          onClick={() => setProfileData({...profileData, profileImage: ''})}
+                          className="ml-2 text-red-600 hover:text-red-700 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio ({profileData.bio.length}/1000)</label>
+                  <textarea
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
+                    placeholder="Tell readers about yourself..."
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-red-600 resize-none"
+                    rows="4"
+                    maxLength="1000"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 mt-6">
+                <button onClick={handleProfileSave} className="bg-red-600 text-white px-6 py-2 rounded font-medium hover:bg-red-700" type="button">
+                  Save Profile
+                </button>
+                <button onClick={() => setShowProfile(false)} className="bg-gray-300 text-gray-900 px-6 py-2 rounded font-medium hover:bg-gray-400" type="button">
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
